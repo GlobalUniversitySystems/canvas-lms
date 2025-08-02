@@ -1,0 +1,16 @@
+# GENERATED FILE, DO NOT MODIFY!
+# To update this file please edit the relevant template and run the generation
+# task `build/dockerfile_writer.rb --env production --compose-file docker-compose.yml,docker-compose.override.yml --in build/Dockerfile.template --out Dockerfile.production`
+ARG SOURCE_REPOSITORY_URI=dummy
+FROM ${SOURCE_REPOSITORY_URI}:latest
+
+COPY --chown=docker:docker . /usr/src/app
+RUN mkdir -p tmp/files
+ENV COMPILE_ASSETS_BRAND_CONFIGS=0
+ENV COMPILE_ASSETS_NPM_INSTALL=0
+RUN unset RUBY && bundle config --global build.nokogiri --use-system-libraries && \
+  bundle config --global build.ffi --enable-system-libffi && \
+  bundle install
+RUN yarn install --frozen-lockfile || yarn install --frozen-lockfile --network-concurrency 1 && \
+  bin/rails canvas:compile_assets --trace && \
+  rm -rf node_modules
