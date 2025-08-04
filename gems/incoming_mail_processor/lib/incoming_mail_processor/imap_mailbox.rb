@@ -80,7 +80,7 @@ module IncomingMailProcessor
     def unprocessed_message_count
       connect
       @imap.select("INBOX")
-      length = @imap.search(["X-GM-RAW", "label:unread"]).length
+      length = @imap.search(["UNSEEN"]).length
       disconnect
       length
     end
