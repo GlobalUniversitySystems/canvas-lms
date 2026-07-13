@@ -36,6 +36,8 @@ CanvasRails::Application.routes.draw do
   post "/api/graphql", to: "graphql#execute"
   get "graphiql", to: "graphql#graphiql"
 
+  get "/brand_configs/versions/:date", to: "brand_config_versions#index"
+
   get "acceptable_use_policy", to: "accounts#acceptable_use_policy"
 
   resources :submissions, only: [] do
@@ -1794,6 +1796,7 @@ CanvasRails::Application.routes.draw do
 
       get "users/:id", action: :api_show
       put "users/:id", action: :update
+      put "users/:user_id/update_ilp", action: :update_ilp
       delete "users/mobile_sessions", action: :expire_mobile_sessions
       delete "users/:id", action: :destroy, as: "destroy_user"
       delete "users/:id/sessions", action: :terminate_sessions

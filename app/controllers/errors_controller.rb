@@ -173,6 +173,16 @@ class ErrorsController < ApplicationController
       end
       report.save
       report.delay.send_to_external
+      if error[:user_perceived_severity].present?
+        body = "A new error report was created. Subject: #{error[:subject]}, Comment: #{error[:comments]}, Link: https://study.gisma.com/error_reports/#{report.id}"
+        message_params = {
+          to: "gismaprogrammes@gisma.com",
+          subject: "Error report",
+          html_body: body,
+          from_name: "study.gisma.com"
+        }
+        Mailer.create_message(Message.new(message_params)).deliver_now
+      end
     rescue => e
       @exception = e
       Canvas::Errors.capture(

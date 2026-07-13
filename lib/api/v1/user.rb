@@ -91,8 +91,14 @@ module Api::V1::User
         end
       end
 
+      json[:ilp] = user&.ilp
+
       if user.pronouns
         json[:pronouns] = user.pronouns
+      end
+
+      if user.sno
+        json[:sno] = user.sno
       end
 
       json[:merged_into_user_id] = user.merged_into_user_id if user.deleted? && user.merged_into_user_id
@@ -234,6 +240,7 @@ module Api::V1::User
       id: user.id,
       anonymous_id: user.id.to_s(36),
       display_name: user.short_name,
+      ilp: user.ilp,
       avatar_image_url: avatar_url_for_user(user),
       html_url: participant_url,
       pronouns: user.pronouns,

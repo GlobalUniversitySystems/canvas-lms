@@ -125,6 +125,15 @@ export default class UsersList extends React.Component {
               sortColumnHeaderRef={this.props.sortColumnHeaderRef}
             />
             <UsersListHeader
+              id="sno"
+              label="SNO"
+              tipDesc={I18n.t('Click to sort by SNO ascending')}
+              tipAsc={I18n.t('Click to sort by SNO descending')}
+              searchFilter={this.props.searchFilter}
+              onUpdateFilters={this.props.onUpdateFilters}
+              columnHeaderRef={this.props.columnHeaderRef}
+            />
+            <UsersListHeader
               id="last_login"
               label={I18n.t('Last Login')}
               tipDesc={I18n.t('Click to sort by last login ascending')}

@@ -67,6 +67,7 @@ export interface Student {
   login_id?: string
   avatar_url?: string
   status?: string
+  ilp?: string | null
 }
 
 export interface OutcomeRollup {

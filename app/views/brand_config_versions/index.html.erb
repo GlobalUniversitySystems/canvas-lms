@@ -1,0 +1,39 @@
+<h2>Changes for brand configs on <%= @date.to_s %> </h2>
+<h3>Dates range: <%= @all_dates&.first&.to_date&.to_s %> - <%= @all_dates&.last&.to_date&.to_s %></h3>
+
+<table>
+  <tr>
+    <td>item</td>
+    <td>item_id</td>
+    <td>event</td>
+    <td>time</td>
+    <td>who</td>
+    <td>changes/object</td>
+  </tr>
+
+  <% @versions.each do |version| %>
+    <% next unless version.object_changes.present? %>
+    <tr>
+      <td><%= version.item_type %></td>
+      <td><%= version.item_id %></td>
+      <td><%= version.event %></td>
+      <td><%= version.created_at %></td>
+      <td><a href="/users/<%= version.whodunnit %>" target="_blank"><%= version.whodunnit %></a></td>
+      <td><%= YAML.load(version.object_changes || version.object) rescue "" %></td>
+    </tr>
+  <% end %>
+</table>
+
+<h4>Dates:</h4>
+<% @all_dates&.each do |date| %>
+  <h5>
+    <a href="/brand_configs/versions/<%= date.to_s %>"><%= date %></a>
+  </h5>
+<% end %>
+
+<style>
+    table tr td {
+        border-collapse: collapse;
+        border: 1px solid grey;
+    }
+</style>

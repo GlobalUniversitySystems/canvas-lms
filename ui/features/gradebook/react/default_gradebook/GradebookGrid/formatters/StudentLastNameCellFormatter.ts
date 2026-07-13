@@ -48,6 +48,7 @@ export default class StudentLastNameCellFormatter {
       enrollmentLabel: getEnrollmentLabel(student),
       secondaryInfo: getSecondaryDisplayInfo(student, secondaryInfo, this.options),
       studentId: student.id,
+      isIlp: student.ilp,
       url: `${student.enrollments[0].grades.html_url}#tab-assignments`,
     }
 

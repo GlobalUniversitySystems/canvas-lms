@@ -239,12 +239,61 @@ export default class TotalGradeCellFormatter {
       warning = buildNoPointsPossibleWarning()
     }
 
+    const assignments = Object.keys(student)
+      .filter(function (k) {
+        return k.indexOf('assignment_') == 0 && k.indexOf('group') == -1
+      })
+      .reduce(function (newData, k) {
+        newData.push(student[k])
+        return newData
+      }, [])
+
+    let assignment
+    let component_passing_grade
+    let component_full_completion
+
+    let perc = I18n.n(round(percentage, round.DEFAULT), {percentage: true})
+    let scr = I18n.n(round(grade.score, round.DEFAULT))
+
+    if (assignments.length) {
+      assignment = assignments[0].assignment
+      component_passing_grade = assignment?.component_passing_grade || null
+      component_full_completion = assignment?.component_full_completion || null
+    }
+
+    if (component_full_completion && component_full_completion === true) {
+      perc = I18n.n(round(percentage, 0), {percentage: true})
+      scr = I18n.n(round(grade.score, 0))
+
+      const assignment_groups = Object.keys(student)
+        .filter(function (k) {
+          return k.indexOf('assignment_group_') == 0
+        })
+        .reduce(function (newData, k) {
+          newData.push(student[k])
+          return newData
+        }, [])
+
+      for (const a in assignment_groups) {
+        if (assignment_groups[a].possible > 0) {
+          if (
+            (assignment_groups[a].score / assignment_groups[a].possible) * 100 <
+            component_passing_grade
+          ) {
+            perc = '–'
+            scr = '–'
+            break
+          }
+        }
+      }
+    }
+
     const options = {
       hideTooltip: this.options.gradesAreWeighted && !warning,
       letterGrade,
-      percentage: I18n.n(round(percentage, round.DEFAULT), {percentage: true}),
+      percentage: perc,
       possible,
-      score: I18n.n(round(grade.score, round.DEFAULT)),
+      score: scr,
       showPointsNotPercent: this.options.shouldShowPoints(),
       warning,
       displayAsScaledPoints,

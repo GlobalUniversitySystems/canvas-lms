@@ -229,6 +229,7 @@ export interface EnvCommon {
     display_name: string
     avatar_image_url: string
     html_url: string
+    ilp: string
     pronouns: null | string
     fake_student: boolean
     avatar_is_fallback: boolean

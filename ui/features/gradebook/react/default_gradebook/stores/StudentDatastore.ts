@@ -28,6 +28,7 @@ function createStudentPlaceholder(id: string) {
     isPlaceholder: true,
     loaded: false,
     sections: [],
+    ilp: false,
   }
 }
 

@@ -85,6 +85,9 @@ class GradebooksController < ApplicationController
     js_bundle :grade_summary, :rubric_assessment
     css_bundle :grade_summary
 
+    @component_full_completion = @context&.component_full_completion
+    @final_grade_new_logic = @context&.final_grade_new_logic(student_enrollment)
+
     load_grade_summary_data
     render stream: can_stream_template?
   end

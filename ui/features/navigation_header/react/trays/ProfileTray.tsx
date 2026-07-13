@@ -22,6 +22,7 @@ import {Text} from '@instructure/ui-text'
 import {List} from '@instructure/ui-list'
 import {Heading} from '@instructure/ui-heading'
 import {Badge} from '@instructure/ui-badge'
+import {SVGIcon} from '@instructure/ui-svg-images'
 import {Avatar} from '@instructure/ui-avatar'
 import {Spinner} from '@instructure/ui-spinner'
 import {Link} from '@instructure/ui-link'
@@ -36,6 +37,14 @@ import {getUnreadCount} from '../queries/unreadCountQuery'
 import type {ProfileTab, TabCountsObj} from '../../../../api.d'
 import {useQuery} from '@tanstack/react-query'
 import {sessionStoragePersister} from '@instructure/platform-query'
+
+const ILPLOGO = `
+<svg width="18" height="18" viewBox="0 0 18 18" fill="none" xmlns="http://www.w3.org/2000/svg">
+<path d="M14.625 13.5H13.6327C13.3868 13.5 13.2639 13.5 13.1687 13.4355C13.0734 13.3711 13.0277 13.2569 12.9364 13.0286L12.5635 12.0964C12.4723 11.8681 12.4266 11.7539 12.3313 11.6895C12.2361 11.625 12.1132 11.625 11.8672 11.625H10.125C9.77145 11.625 9.59468 11.625 9.4848 11.5152C9.375 11.4053 9.375 11.2286 9.375 10.875V7.875M9.375 7.875V6M9.375 7.875H12.2917" stroke="#505B63" style="stroke:#505B63;stroke:color(display-p3 0.3137 0.3569 0.3882);stroke-opacity:1;" stroke-width="1.4" stroke-linecap="round" stroke-linejoin="round"/>
+<path d="M9.375 4.5C8.54655 4.5 7.875 3.82843 7.875 3C7.875 2.17157 8.54655 1.5 9.375 1.5C10.2035 1.5 10.875 2.17157 10.875 3C10.875 3.82843 10.2035 4.5 9.375 4.5Z" stroke="#505B63" style="stroke:#505B63;stroke:color(display-p3 0.3137 0.3569 0.3882);stroke-opacity:1;" stroke-width="1.4" stroke-linecap="round" stroke-linejoin="round"/>
+<path d="M7.16847 7.5C5.01551 7.85955 3.375 9.72338 3.375 11.9687C3.375 14.4713 5.41307 16.5 7.9272 16.5C9.45022 16.5 10.7986 15.7554 11.625 14.6119" stroke="#505B63" style="stroke:#505B63;stroke:color(display-p3 0.3137 0.3569 0.3882);stroke-opacity:1;" stroke-width="1.4" stroke-linecap="round" stroke-linejoin="round"/>
+</svg>
+`
 
 const I18n = createI18nScope('ProfileTray')
 
@@ -108,6 +117,7 @@ export default function ProfileTray() {
   const userAvatarURL = window.ENV.current_user.avatar_is_fallback
     ? ''
     : window.ENV.current_user.avatar_image_url
+  const userIlp = window.ENV.current_user.ilp
 
   // Check if we have any accessibility settings to show
   const hasAccessibilitySettings = true // High contrast is always available
@@ -128,6 +138,7 @@ export default function ProfileTray() {
         <div style={{wordBreak: 'break-word'}}>
           <Heading level="h3" as="h2">
             {userDisplayName}
+            {userIlp && <SVGIcon src={ILPLOGO} />}
             {userPronouns && (
               <Text size="large" fontStyle="italic">
                 &nbsp;({userPronouns})

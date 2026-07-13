@@ -153,6 +153,8 @@ module Types
     field :course_code, String, "course short name", null: true
     field :horizon_course, Boolean, null: true
 
+    field :component_full_completion, Boolean, null: true
+    field :component_passing_grade, Integer, null: true
     field :name, String, null: false
     field :state, CourseWorkflowState, method: :workflow_state, null: false
     field :syllabus_body, String, null: true

@@ -276,6 +276,8 @@ AssignmentGroupListItemView.prototype.toJSON = function () {
     displayableRules: this.displayableRules(),
     showWeight,
     groupWeight: data.group_weight,
+    componentFullCompletion: data.component_full_completion,
+    componentPassingGrade: data.component_passing_grade,
     toggleMessage: this.messages.toggleMessage,
     hasFrozenAssignments:
       this.model.hasFrozenAssignments != null && this.model.hasFrozenAssignments(),

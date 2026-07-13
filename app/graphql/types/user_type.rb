@@ -97,6 +97,7 @@ module Types
           "The name of the user that is should be used for sorting groups of users, such as in the gradebook.",
           null: true
 
+    field :ilp, Boolean, null: true
     field :pronouns, String, null: true
 
     field :discussions_splitscreen_view, Boolean, null: false

@@ -1112,6 +1112,14 @@ class User < ApplicationRecord
                          User.last_name_first(self.name, likely_already_surname_first: false)
   end
 
+  def ilp
+    read_attribute(:ilp)
+  end
+
+  def get_ilp
+    ilp
+  end
+
   def email_channel
     # It's already ordered, so find the first one, if there's one.
     if communication_channels.loaded?

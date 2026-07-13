@@ -176,7 +176,7 @@ module SpeedGrader
         if anonymous_students?(current_user:, assignment:)
           []
         else
-          %i[name id sortable_name uuid]
+          %i[name id sortable_name uuid ilp]
         end
 
       # yes, this will arbitrarily pick the first enrollment in the course for the user,

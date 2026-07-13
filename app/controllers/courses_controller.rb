@@ -4752,7 +4752,9 @@ class CoursesController < ApplicationController
       :horizon_course,
       :career_learning_library_only,
       :disable_csp,
-      :default_student_gradebook_view
+      :default_student_gradebook_view,
+      :component_full_completion,
+      :component_passing_grade
     )
   end
 

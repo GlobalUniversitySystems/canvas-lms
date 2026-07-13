@@ -2639,6 +2639,23 @@ class Course < ApplicationRecord
     raise errors[0] unless errors.empty?
   end
 
+  def final_grade_new_logic(enrollment)
+    course = enrollment.course
+    grade = ""
+
+    if course.component_full_completion
+      component_passing_grade = course.component_passing_grade
+
+      grade = if any_group_failed?(enrollment, component_passing_grade)
+                "-"
+              else
+                enrollment.computed_final_grade&.round(0) || enrollment.scores.find_by(course_score: true)&.final_score&.round
+              end
+    end
+
+    grade
+  end
+
   def generate_grade_publishing_csv_output(enrollments, publishing_user, publishing_pseudonym, include_final_grade_overrides: false)
     ActiveRecord::Associations.preload(enrollments, { user: :pseudonyms })
     custom_gradebook_statuses_enabled = Account.site_admin.feature_enabled?(:custom_gradebook_statuses) && include_final_grade_overrides
@@ -2668,12 +2685,27 @@ class Course < ApplicationRecord
       end
 
       enrollments.each do |enrollment|
+        course = enrollment.course
         next if include_final_grade_overrides && !enrollment.effective_final_score
         next if !include_final_grade_overrides && !enrollment.computed_final_score
+        next if course.component_full_completion && student_does_not_have_any_submissions?(enrollment)
 
         enrollment_ids << enrollment.id
 
-        if include_final_grade_overrides
+        if course.component_full_completion
+          passing_grade = course.component_passing_grade
+
+          if any_group_failed?(enrollment, passing_grade)
+            score = 0
+            grade = 0
+          elsif include_final_grade_overrides
+            grade = enrollment.effective_final_grade&.round(0)
+            score = enrollment.effective_final_score&.round(0)
+          else
+            grade = enrollment.computed_final_grade&.round(0)
+            score = enrollment.computed_final_score&.round(0)
+          end
+        elsif include_final_grade_overrides
           grade = enrollment.effective_final_grade
           score = enrollment.effective_final_score
 
@@ -2716,6 +2748,47 @@ class Course < ApplicationRecord
     else
       []
     end
+  end
+
+  def student_does_not_have_any_submissions?(enrollment)
+    does_not_have_submissions = false
+
+    scores = enrollment.scores.where(course_score: false)
+    ag_ids = scores.pluck(:assignment_group_id)
+    groups = AssignmentGroup.where(id: ag_ids)
+    with_assignments = groups.filter { |g| g.assignments.present? }.pluck(:id)
+
+    with_assignments.each do |g_id|
+      assignments = Assignment.where(assignment_group_id: g_id).where(workflow_state: "published")
+      submissions = Submission.where(assignment_id: assignments.pluck(:id), user_id: enrollment.user_id)
+
+      does_not_have_submissions = true if submissions.pluck(:published_score) == [nil]
+
+      break if does_not_have_submissions
+    end
+
+    does_not_have_submissions
+  end
+
+  def any_group_failed?(enrollment, passing_grade)
+    is_fail = false
+
+    scores = enrollment.scores.where(course_score: false)
+    ag_ids = scores.pluck(:assignment_group_id)
+    groups = AssignmentGroup.where(id: ag_ids)
+    with_assignments = groups.filter { |g| g.assignments.present? }.pluck(:id)
+
+    with_assignments.each do |g_id|
+      assignments = Assignment.where(assignment_group_id: g_id).where(workflow_state: "published")
+      submissions = Submission.where(assignment_id: assignments.pluck(:id), user_id: enrollment.user_id)
+
+      next if submissions.pluck(:published_score) == [nil]
+
+      is_fail = true if (submissions.pluck(:published_score).sum / assignments.pluck(:points_possible).sum * 100) < passing_grade rescue false
+      break if is_fail
+    end
+
+    is_fail
   end
 
   def expire_pending_grade_publishing_statuses(last_publish_attempt_at)
@@ -4555,6 +4628,28 @@ class Course < ApplicationRecord
 
   def touch_admins # TODO: remove after existing jobs run
     clear_todo_list_cache(:admins)
+  end
+
+  def fetch_component_full_completion_from_master
+    return if MasterCourses::MasterTemplate.is_master_course?(self)
+    return if component_full_completion.present?
+
+    master_course = master_course_subscriptions&.active&.first&.master_template&.course
+    return unless master_course
+
+    self.component_full_completion = master_course.component_full_completion
+    save(validate: false)
+  end
+
+  def fetch_component_passing_grade_from_master
+    return if MasterCourses::MasterTemplate.is_master_course?(self)
+    return if component_passing_grade.present?
+
+    master_course = master_course_subscriptions&.active&.first&.master_template&.course
+    return unless master_course
+
+    self.component_passing_grade = master_course.component_passing_grade
+    save(validate: false)
   end
 
   def clear_caches_if_necessary

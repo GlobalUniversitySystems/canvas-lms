@@ -27,6 +27,8 @@ const SCC_QUERY = gql`
     course(id: $courseId) {
       _id
       name
+      componentPassingGrade
+      componentFullCompletion
       allowFinalGradeOverride
       permissions {
         become_user: becomeUser
@@ -62,6 +64,7 @@ const SCC_QUERY = gql`
       ... on User {
         _id
         pronouns
+        ilp
         short_name: shortName
         avatar_url: avatarUrl
         enrollments(courseId: $courseId) {

@@ -627,6 +627,7 @@ export function initDropdown() {
     (student: StudentWithSubmission) => {
       const {submission_state, submission} = student
       let {name} = student
+      const {ilp} = student
       const className = SpeedgraderHelpers.classNameBasedOnStudent({submission_state, submission})
       if (hideStudentNames || isAnonymous) {
         name = anonymousName(student)

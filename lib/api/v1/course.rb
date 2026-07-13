@@ -120,6 +120,8 @@ module Api::V1::Course
           api_json(gp, user, session, only: %w[id title start_date end_date workflow_state])
         end
       end
+      hash["component_full_completion"] = course&.component_full_completion
+      hash["component_passing_grade"] = course&.component_passing_grade
       if includes.include?("course_progress")
         hash["course_progress"] = CourseProgress.new(course,
                                                      subject_user,

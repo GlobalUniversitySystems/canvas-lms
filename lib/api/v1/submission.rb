@@ -157,9 +157,7 @@ module Api::V1::Submission
         )
     end
 
-    if includes.include?("assignment")
-      hash["assignment"] = assignment_json(assignment, current_user, session)
-    end
+    hash["assignment"] = assignment_json(assignment, current_user, session)
 
     if includes.include?("course")
       hash["course"] = course_json(submission.context, current_user, session, ["html_url"], nil)

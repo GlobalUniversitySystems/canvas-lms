@@ -68,6 +68,14 @@ AssignmentGroup.prototype.groupWeight = function (newWeight) {
   return this.set('group_weight', newWeight)
 }
 
+AssignmentGroup.prototype.componentFullCompletion = function () {
+  return this.get('component_full_completion') || false
+}
+
+AssignmentGroup.prototype.componentPassingGrade = function () {
+  return this.get('component_passing_grade') || ''
+}
+
 AssignmentGroup.prototype.rules = function (newRules) {
   if (!(arguments.length > 0)) {
     return this.get('rules')

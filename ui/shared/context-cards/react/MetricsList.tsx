@@ -17,6 +17,7 @@
  */
 
 import React from 'react'
+import round from 'round'
 import PropTypes from 'prop-types'
 import {useScope as createI18nScope} from '@canvas/i18n'
 import {Metric, MetricGroup} from '@instructure/ui-metric'
@@ -27,12 +28,14 @@ class MetricsList extends React.Component {
   static propTypes = {
     analytics: PropTypes.object,
     user: PropTypes.object,
+    course: PropTypes.object,
     allowFinalGradeOverride: PropTypes.bool,
   }
 
   static defaultProps = {
     analytics: null,
     user: {},
+    course: {},
     allowFinalGradeOverride: false,
   }
 
@@ -42,22 +45,81 @@ class MetricsList extends React.Component {
       return null
     }
 
+    if (
+      this.props.course &&
+      this.props.course.componentFullCompletion &&
+      this.props.course.submissionsConnection &&
+      this.props.course.submissionsConnection.edges &&
+      this.props.course.componentPassingGrade
+    ) {
+      const submissionScores = this.props.course.submissionsConnection.edges.map(
+        e => e.submission.score,
+      )
+      if (
+        submissionScores.length > 0 &&
+        Math.min(
+          ...this.props.course.submissionsConnection.edges
+            .map(e => e.submission.score)
+            .filter(e => e),
+        ) < this.props.course.componentPassingGrade
+      ) {
+        return '-'
+      }
+    }
+
     // @ts-expect-error TS2339 (typescriptify)
     const enrollment = this.props.user.enrollments[0]
     // @ts-expect-error TS2339 (typescriptify)
     const gradeOverride = this.props.allowFinalGradeOverride
     if (enrollment) {
       const grades = enrollment.grades
-      if (gradeOverride && grades.override_grade != null) {
-        return grades.override_grade
-      } else if (gradeOverride && grades.override_score != null) {
-        return `${grades.override_score}%`
-      } else if (grades.current_grade != null) {
-        return grades.current_grade
-      } else if (grades.current_score != null) {
-        return `${grades.current_score}%`
+      if (this.props.course.componentFullCompletion) {
+        if (grades.override_grade != null) {
+          if (
+            this.props.course.componentPassingGrade &&
+            grades.override_grade < this.props.course.componentPassingGrade
+          ) {
+            return '-'
+          }
+          return round(grades.override_grade, 0)
+        } else if (grades.override_score != null) {
+          if (
+            this.props.course.componentPassingGrade &&
+            grades.override_score < this.props.course.componentPassingGrade
+          ) {
+            return '-'
+          }
+          return `${round(grades.override_score, 0)}%`
+        } else if (grades.current_grade != null) {
+          if (
+            this.props.course.componentPassingGrade &&
+            grades.current_grade < this.props.course.componentPassingGrade
+          ) {
+            return '-'
+          }
+          return round(grades.current_grade, 0)
+        } else if (grades.current_score != null) {
+          if (
+            this.props.course.componentPassingGrade &&
+            grades.current_score < this.props.course.componentPassingGrade
+          ) {
+            return '-'
+          }
+          return `${round(grades.current_score, 0)}%`
+        }
+        return '-'
+      } else {
+        if (gradeOverride && grades.override_grade != null) {
+          return grades.override_grade
+        } else if (gradeOverride && grades.override_score != null) {
+          return `${grades.override_score}%`
+        } else if (grades.current_grade != null) {
+          return grades.current_grade
+        } else if (grades.current_score != null) {
+          return `${grades.current_score}%`
+        }
+        return '-'
       }
-      return '-'
     }
     return '-'
   }

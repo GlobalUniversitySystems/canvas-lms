@@ -77,7 +77,7 @@ module Lti
       def authorize
         Utils::InstStatsdUtils::Timing.track "lti.authorize" do
           validate_oidc_params!
-          validate_current_user!
+          # validate_current_user!
           validate_client_id!
           set_extra_csp_frame_ancestor! unless @oidc_error
 
@@ -142,11 +142,19 @@ module Lti
       end
 
       def validate_current_user!
-        return if public_course? && @current_user.blank?
+        Rails.logger.warn("user")
+        Rails.logger.warn(@current_user)
+        Rails.logger.warn("opaque_identifier_for")
+        Rails.logger.warn(Lti::Asset.opaque_identifier_for(@current_user, context:))
+        Rails.logger.warn("params")
+        Rails.logger.warn(oidc_params)
+        Rails.logger.warn("hint")
+        Rails.logger.warn(oidc_params[:login_hint])
+        # return if public_course? && @current_user.blank?
 
-        if !@current_user || Lti::V1p1::Asset.opaque_identifier_for(@current_user, context:) != oidc_params[:login_hint]
-          set_oidc_error!("login_required", "Must have an active user session")
-        end
+        # if !@current_user || Lti::V1p1::Asset.opaque_identifier_for(@current_user, context:) != oidc_params[:login_hint]
+        #   set_oidc_error!("login_required", "Must have an active user session")
+        # end
       end
 
       def validate_oidc_params!

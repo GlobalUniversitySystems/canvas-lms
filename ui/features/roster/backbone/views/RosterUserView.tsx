@@ -148,6 +148,7 @@ export default class RosterUserView extends View {
     json.canLinkStudents = json.isObserver && !ENV.course.concluded
     json.canViewLoginIdColumn = ENV.permissions.view_user_logins
     json.canViewSisIdColumn = ENV.permissions.read_sis
+    json.isILP = json.ilp === true
     json.canManageDifferentiationTags =
       ENV.permissions.can_manage_differentiation_tags &&
       ENV.permissions.allow_assign_to_differentiation_tags

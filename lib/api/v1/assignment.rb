@@ -182,6 +182,8 @@ module Api::V1::Assignment
 
     hash["grades_published"] = assignment.grades_published? if opts[:include_grades_published]
     hash["graded_submissions_exist"] = assignment.graded_submissions_exist?
+    hash["component_full_completion"] = assignment.context&.component_full_completion
+    hash["component_passing_grade"] = assignment.context&.component_passing_grade
 
     if opts[:include_checkpoints] && assignment.context.discussion_checkpoints_enabled?
       hash["has_sub_assignments"] = assignment.has_sub_assignments?
