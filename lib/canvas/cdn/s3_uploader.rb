@@ -29,9 +29,7 @@ module Canvas
         @folder = folder
         @verbose = verbose
         @config = Canvas::Cdn.config
-        @s3 = Aws::S3::Resource.new(access_key_id: config.aws_access_key_id,
-                                    secret_access_key: config.aws_secret_access_key,
-                                    region: config.region)
+        @s3 = Aws::S3::Resource.new(region: config.region)
         @bucket = @s3.bucket(config.bucket)
         @mutex = Mutex.new
       end
