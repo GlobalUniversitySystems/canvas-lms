@@ -276,7 +276,15 @@ const FeatureFlagRow = React.memo(
     return (
       <Row key={feature.feature} data-testid="ff-table-row">
         <Cell>
-          <ToggleDetails summary={feature.display_name} defaultExpanded={feature.autoexpand}>
+          <ToggleDetails
+            summary={feature.display_name}
+            defaultExpanded={feature.autoexpand}
+            styles={{
+              details: {
+                opacity: '1 !important',
+              },
+            }}
+          >
             <div dangerouslySetInnerHTML={{__html: feature.description}} />
           </ToggleDetails>
         </Cell>
