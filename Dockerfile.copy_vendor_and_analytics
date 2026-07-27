@@ -1,0 +1,6 @@
+ARG SOURCE_REPOSITORY_URI=dummy
+ARG SOURCE_TAG=latest
+FROM ${SOURCE_REPOSITORY_URI}:${SOURCE_TAG}
+COPY --chown=docker:docker ./gems/plugins/analytics gems/plugins/analytics
+COPY --chown=docker:docker ./vendor/QTIMigrationTool vendor/QTIMigrationTool
+WORKDIR /usr/src/app
