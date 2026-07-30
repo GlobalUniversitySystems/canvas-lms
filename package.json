@@ -222,7 +222,8 @@
     "webpack-retry-chunk-load-plugin": "^3.1.1",
     "yarn-deduplicate": "^3.0.1",
     "zod": "^3.22.4",
-    "zustand": "^4.5.5"
+    "zustand": "^4.5.5",
+    "round": "^2.0.1"
   },
   "devDependencies": {
     "@babel/cli": "^7.0.0",
@@ -400,8 +401,8 @@
     "postinstall": "yarn dedupe-yarn; patch-package; rm -rf node_modules/@instructure/outcomes-ui/node_modules/@instructure; [ -f ./script/install_hooks ] && ./script/install_hooks || true",
     "webpack:analyze": "SKIP_SOURCEMAPS=1 WEBPACK_PEDANTIC=0 rspack --analyze",
     "webpack": "gulp rev 1> /dev/null & NODE_ENV=development rspack --watch=true & yarn graphql:codegen --watch",
-    "webpack-development": "NODE_OPTIONS=--max-old-space-size=8192 NODE_ENV=development rspack build",
-    "webpack-production": "NODE_OPTIONS=--max-old-space-size=8192 NODE_ENV=production rspack build",
+    "webpack-development": "NODE_OPTIONS=--max-old-space-size=8192 NODE_OPTIONS=--max-old-space-size=8192 NODE_ENV=development rspack build",
+    "webpack-production": "NODE_OPTIONS=--max-old-space-size=8192 NODE_OPTIONS=--max-old-space-size=8192 NODE_ENV=production rspack build",
     "jspec": "./spec/jspec.sh",
     "jspec-watch": "./spec/jspec.sh --watch",
     "a11y-report": "./spec/jspec.sh --a11y",
