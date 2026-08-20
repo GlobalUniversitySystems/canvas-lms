@@ -186,7 +186,7 @@ export default function UsersToolbar(props) {
                   </Grid.Col>
                 </Grid.Row>
               )}
-              {window.ENV.PERMISSIONS.can_edit_users && (
+              {false && window.ENV.PERMISSIONS.can_edit_users && (
                 <Grid.Row>
                   <Grid.Col width="auto">
                     <Checkbox
