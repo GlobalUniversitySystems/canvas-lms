@@ -88,7 +88,7 @@ module Canvas
       end
 
       def options_for(path)
-        options = { acl: "public-read", content_type: mime_for(path).to_s }
+        options = { content_type: mime_for(path).to_s }
         if fingerprinted?(path)
           options[:cache_control] = "public, max-age=#{1.year}"
         end
