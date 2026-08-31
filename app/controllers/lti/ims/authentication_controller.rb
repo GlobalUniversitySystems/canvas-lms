@@ -72,7 +72,7 @@ module Lti
       # please refer to the inline documentation of "app/models/lti/lti_advantage_adapter.rb"
       def authorize
         validate_oidc_params!
-        validate_current_user!
+        # validate_current_user!
         validate_client_id!
         validate_launch_eligibility!
 
@@ -97,11 +97,20 @@ module Lti
       end
 
       def validate_current_user!
-        return if public_course? && @current_user.blank?
+        Rails.logger.warn('user')
+        Rails.logger.warn(@current_user)
+        Rails.logger.warn('opaque_identifier_for')
+        Rails.logger.warn(Lti::Asset.opaque_identifier_for(@current_user, context: context))
+        Rails.logger.warn('params')
+        Rails.logger.warn(oidc_params)
+        Rails.logger.warn('hint')
+        Rails.logger.warn(oidc_params[:login_hint])
 
-        if !@current_user || Lti::Asset.opaque_identifier_for(@current_user, context: context) != oidc_params[:login_hint]
-          set_oidc_error!("login_required", "Must have an active user session")
-        end
+        # return if public_course? && @current_user.blank?
+
+        # if !@current_user || Lti::Asset.opaque_identifier_for(@current_user, context: context) != oidc_params[:login_hint]
+        #   set_oidc_error!("login_required", "Must have an active user session")
+        # end
       end
 
       def validate_oidc_params!

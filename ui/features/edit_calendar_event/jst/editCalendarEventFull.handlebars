@@ -3,6 +3,7 @@
   {{else}}{{#t "edit_calendar_event_header"}}Edit Calendar Event{{/t}}{{/if}}
 </h1>
 <form id="editCalendarEventFull" class="{{#if use_section_dates}}use_section_dates{{/if}}">
+  <input type="hidden" name="creation_source" value="canvas" />
   <input type="text"
          name="title"
          class="title input-block-level"

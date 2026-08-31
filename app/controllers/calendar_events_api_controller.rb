@@ -326,7 +326,11 @@ class CalendarEventsApiController < ApplicationController
   #
   # @returns [CalendarEvent]
   def index
-    render_events_for_user(@current_user, api_v1_calendar_events_url)
+    if params[:recent_date].present?
+      render_recent_events
+    else
+      render_events_for_user(@current_user, api_v1_calendar_events_url)
+    end
   end
 
   # @API List calendar events for a user
@@ -371,6 +375,14 @@ class CalendarEventsApiController < ApplicationController
   # @returns [CalendarEvent]
   def user_index
     render_events_for_user(@observee, api_v1_user_calendar_events_url)
+  end
+
+  def render_recent_events
+    date = Date.parse(params.fetch(:recent_date))
+
+    events = CalendarEvent.active.where(context_type: "Course").where("updated_at > ?", date)
+
+    render :json => events.to_json
   end
 
   def render_events_for_user(user, route_url)
@@ -489,6 +501,7 @@ class CalendarEventsApiController < ApplicationController
     end
 
     params_for_create = calendar_event_params
+    params_for_create[:creation_source] = 'api' unless params_for_create.key?(:creation_source)
     if params_for_create[:description].present?
       params_for_create[:description] = process_incoming_html_content(params_for_create[:description])
     end
@@ -716,6 +729,9 @@ class CalendarEventsApiController < ApplicationController
       @event.updating_user = @current_user
       @event.cancel_reason = params[:cancel_reason]
       if @event.destroy
+        if @event.is_a?(CalendarEvent)
+          @event.destroy_section
+        end
         if @event.appointment_group && @event.appointment_group.appointments.count == 0
           @event.appointment_group.destroy(@current_user)
         end

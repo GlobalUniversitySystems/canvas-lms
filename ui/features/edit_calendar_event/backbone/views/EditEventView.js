@@ -65,7 +65,8 @@ export default class EditCalendarEventView extends Backbone.View {
         'location_address',
         'duplicate',
         'web_conference',
-        'important_dates'
+        'important_dates',
+        'creation_source'
       )
       if (picked_params.start_at) {
         picked_params.start_date = tz.format(

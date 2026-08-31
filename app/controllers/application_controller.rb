@@ -46,6 +46,11 @@ class ApplicationController < ActionController::Base
   # Around action yields return (in REVERSE order) after all after actions
 
   prepend_before_action :load_user, :load_account
+  before_action :set_paper_trail_whodunnit
+  def user_for_paper_trail
+    @current_user.id rescue "Unknown user id"
+  end
+
   # make sure authlogic is before load_user
   skip_before_action :activate_authlogic
   prepend_before_action :activate_authlogic

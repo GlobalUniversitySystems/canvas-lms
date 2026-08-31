@@ -56,7 +56,8 @@ export default class CalendarEvent extends Backbone.Model {
       'duplicate',
       'comments',
       'web_conference',
-      'important_dates'
+      'important_dates',
+      'creation_source'
     )
     if (obj.use_section_dates && obj.child_event_data) {
       filtered.child_event_data = _.chain(obj.child_event_data)
@@ -80,6 +81,10 @@ export default class CalendarEvent extends Backbone.Model {
   present() {
     const result = Backbone.Model.prototype.toJSON.call(this)
     result.newRecord = !result.id
+    // Strip "Lesson: " prefix for editing if it's a lesson event
+    if (result.is_lesson && result.title && result.title.startsWith('Lesson: ')) {
+      result.title = result.title.substring(8) // Remove "Lesson: " prefix
+    }
     return result
   }
 

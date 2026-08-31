@@ -46,6 +46,7 @@ module Types
           null: true
 
     field :pronouns, String, null: true
+    field :ilp, Boolean, null: true
 
     field :avatar_url, UrlType, null: true
 

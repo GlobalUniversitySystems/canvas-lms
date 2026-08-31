@@ -60,7 +60,7 @@ class Course < ActiveRecord::Base
 
   has_many :course_sections
   has_many :active_course_sections, -> { where(workflow_state: "active") }, class_name: "CourseSection"
-  has_many :enrollments, -> { where("enrollments.workflow_state<>'deleted'") }, inverse_of: :course
+  has_many :enrollments, -> { where("enrollments.workflow_state<>'deleted' AND course_section_id NOT IN (SELECT id FROM #{CourseSection.quoted_table_name} WHERE is_lesson = true)") }, inverse_of: :course
 
   has_many :all_enrollments, class_name: "Enrollment", inverse_of: :course
   has_many :current_enrollments, -> { where("enrollments.workflow_state NOT IN ('rejected', 'completed', 'deleted', 'inactive')").preload(:user) }, class_name: "Enrollment"
@@ -270,6 +270,8 @@ class Course < ActiveRecord::Base
   after_save :update_enrollment_states_if_necessary
   after_save :clear_caches_if_necessary
   after_commit :update_cached_due_dates
+  # after_save :fetch_component_full_completion_from_master
+  # after_save :fetch_component_passing_grade_from_master
 
   after_create :set_default_post_policy
   after_create :copy_from_course_template
@@ -424,6 +426,20 @@ class Course < ActiveRecord::Base
       context_modules.select(&:active?)
     else
       context_modules.active
+    end
+  end
+
+  def enroll_students_in_section(section_id)
+    enrollment_ids = student_enrollments.active.where(course_section_id: self.default_section).pluck(:id)
+    enrollment_ids.each do |enrollment_id|
+      enrollment = StudentEnrollment.find(enrollment_id)
+      StudentEnrollment.create(
+        course_id: self.id,
+        user_id: enrollment.user_id,
+        course_section_id: section_id,
+        role_id: enrollment.role_id,
+        workflow_state: enrollment.workflow_state,
+      )
     end
   end
 
@@ -816,39 +832,95 @@ class Course < ActiveRecord::Base
   scope :least_recently_updated, ->(limit) { order(:updated_at).limit(limit) }
 
   scope :manageable_by_user, lambda { |*args|
-    # args[0] should be user_id, args[1], if true, will include completed
-    # enrollments as well as active enrollments
-    user_id = args[0]
-    workflow_states = (args[1].present? ? ["'active'", "'completed'"] : ["'active'"]).join(", ")
-    admin_completed_sql = ""
-    enrollment_completed_sql = ""
+    # args[0] = user_id
+    # args[1] = include completed enrollments and courses
+    user_id = args[0].to_i
+    include_completed = args[1].present?
+    now = Time.current.utc
 
-    if args[1].blank?
-      admin_completed_sql = sanitize_sql(["INNER JOIN #{Course.quoted_table_name} AS courses ON courses.id = caa.course_id
-        INNER JOIN #{EnrollmentTerm.quoted_table_name} AS et ON et.id = courses.enrollment_term_id
-        WHERE courses.workflow_state<>'completed' AND
-          ((et.end_at IS NULL OR et.end_at >= :end) OR
-          (courses.restrict_enrollments_to_course_dates = true AND courses.conclude_at >= :end))", end: Time.now.utc])
-      enrollment_completed_sql = sanitize_sql(["INNER JOIN #{EnrollmentTerm.quoted_table_name} AS et ON et.id = courses.enrollment_term_id
-        WHERE courses.workflow_state<>'completed' AND
-          ((et.end_at IS NULL OR et.end_at >= :end) OR
-          (courses.restrict_enrollments_to_course_dates = true AND courses.conclude_at >= :end))", end: Time.now.utc])
+    workflow_states =
+      include_completed ? %w[active completed] : %w[active]
+
+    account_access_sql = sanitize_sql_array(
+      [
+        <<~SQL.squish,
+        EXISTS (
+          SELECT 1
+          FROM #{CourseAccountAssociation.quoted_table_name} AS caa
+          INNER JOIN #{Account.quoted_table_name} AS a
+            ON a.id = caa.account_id
+           AND a.workflow_state = 'active'
+          INNER JOIN #{AccountUser.quoted_table_name} AS au
+            ON au.account_id = a.id
+           AND au.workflow_state = 'active'
+          WHERE caa.course_id = courses.id
+            AND au.user_id = ?
+        )
+      SQL
+        user_id
+      ]
+    )
+
+    enrollment_access_sql = sanitize_sql_array(
+      [
+        <<~SQL.squish,
+        EXISTS (
+          SELECT 1
+          FROM #{Enrollment.quoted_table_name} AS e
+          INNER JOIN #{EnrollmentState.quoted_table_name} AS es
+            ON es.enrollment_id = e.id
+          WHERE e.course_id = courses.id
+            AND e.user_id = ?
+            AND e.workflow_state IN (?)
+            AND e.type IN (
+              'TeacherEnrollment',
+              'TaEnrollment',
+              'DesignerEnrollment'
+            )
+            AND es.state IN (?)
+        )
+      SQL
+        user_id,
+        workflow_states,
+        workflow_states
+      ]
+    )
+
+    relation = where(
+      "(#{account_access_sql}) OR (#{enrollment_access_sql})"
+    )
+
+    unless include_completed
+      relation = relation
+                   .joins(
+                     <<~SQL.squish
+          INNER JOIN #{EnrollmentTerm.quoted_table_name}
+            AS manageable_enrollment_terms
+            ON manageable_enrollment_terms.id = courses.enrollment_term_id
+        SQL
+                 )
+                   .where.not(workflow_state: "completed")
+                   .where(
+                     <<~SQL.squish,
+          (
+            manageable_enrollment_terms.end_at IS NULL
+            OR manageable_enrollment_terms.end_at >= :end
+            OR (
+              courses.restrict_enrollments_to_course_dates = TRUE
+              AND courses.conclude_at >= :end
+            )
+          )
+        SQL
+                     end: now
+                   )
     end
 
-    distinct.joins("INNER JOIN (
-         SELECT caa.course_id, au.user_id FROM #{CourseAccountAssociation.quoted_table_name} AS caa
-         INNER JOIN #{Account.quoted_table_name} AS a ON a.id = caa.account_id AND a.workflow_state = 'active'
-         INNER JOIN #{AccountUser.quoted_table_name} AS au ON au.account_id = a.id AND au.user_id = #{user_id.to_i} AND au.workflow_state = 'active'
-         #{admin_completed_sql}
-       UNION SELECT courses.id AS course_id, e.user_id FROM #{Course.quoted_table_name}
-         INNER JOIN #{Enrollment.quoted_table_name} AS e ON e.course_id = courses.id AND e.user_id = #{user_id.to_i}
-           AND e.workflow_state IN(#{workflow_states}) AND e.type IN ('TeacherEnrollment', 'TaEnrollment', 'DesignerEnrollment')
-         INNER JOIN #{EnrollmentState.quoted_table_name} AS es ON es.enrollment_id = e.id AND es.state IN (#{workflow_states})
-         #{enrollment_completed_sql}) AS course_users
-       ON course_users.course_id = courses.id")
+    relation
   }
 
-  scope :not_deleted, -> { where("workflow_state<>'deleted'") }
+  scope :not_deleted, -> {
+    where.not(courses: { workflow_state: "deleted" })
+  }
 
   scope :with_enrollments, lambda {
     where("EXISTS (?)", Enrollment.active.where("enrollments.course_id=courses.id"))
@@ -2016,6 +2088,13 @@ class Course < ActiveRecord::Base
                     )
                     include_final_grade_overrides &= course.allow_final_grade_override?
 
+                    # course = Course.find 48
+                    # enrollments = course.student_enrollments
+                    # publishing_user = User.find 1
+                    # publishing_pseudonym = publishing_user.pseudonym
+                    # include_final_grade_overrides = false
+
+
                     course.generate_grade_publishing_csv_output(
                       enrollments,
                       publishing_user,
@@ -2115,6 +2194,23 @@ class Course < ActiveRecord::Base
     raise errors[0] unless errors.empty?
   end
 
+  def final_grade_new_logic(enrollment)
+    course = enrollment.course
+    grade = ''
+
+    if course.component_full_completion
+      component_passing_grade = course.component_passing_grade
+
+      if any_group_failed?(enrollment, component_passing_grade)
+        grade = '-'
+      else
+        grade = enrollment.computed_final_grade&.round(0) || enrollment.scores.find_by(course_score: true)&.final_score&.round
+      end
+    end
+
+    grade
+  end
+
   def generate_grade_publishing_csv_output(enrollments, publishing_user, publishing_pseudonym, include_final_grade_overrides: false)
     ActiveRecord::Associations::Preloader.new.preload(enrollments, { user: :pseudonyms })
 
@@ -2138,18 +2234,40 @@ class Course < ActiveRecord::Base
       csv << column_names
 
       enrollments.each do |enrollment|
+        course = enrollment.course
+
         next if include_final_grade_overrides && !enrollment.effective_final_score
         next if !include_final_grade_overrides && !enrollment.computed_final_score
+        next if course.component_full_completion && student_does_not_have_any_submissions?(enrollment)
 
         enrollment_ids << enrollment.id
 
-        if include_final_grade_overrides
-          grade = enrollment.effective_final_grade
-          score = enrollment.effective_final_score
+        if course.component_full_completion
+          passing_grade = course.component_passing_grade
+
+          if any_group_failed?(enrollment, passing_grade)
+            score = 0
+            grade = 0
+          else
+            if include_final_grade_overrides
+              grade = enrollment.effective_final_grade&.round(0)
+              score = enrollment.effective_final_score&.round(0)
+            else
+              grade = enrollment.computed_final_grade&.round(0)
+              score = enrollment.computed_final_score&.round(0)
+            end
+          end
         else
-          grade = enrollment.computed_final_grade
-          score = enrollment.computed_final_score
+          if include_final_grade_overrides
+            grade = enrollment.effective_final_grade
+            score = enrollment.effective_final_score
+          else
+            grade = enrollment.computed_final_grade
+            score = enrollment.computed_final_score
+          end
         end
+
+
 
         sis_pseudonyms =
           SisPseudonym.for(enrollment.user, root_account, include_all_pseudonyms: true)
@@ -2180,6 +2298,47 @@ class Course < ActiveRecord::Base
     else
       []
     end
+  end
+
+  def student_does_not_have_any_submissions?(enrollment)
+    does_not_have_submissions = false
+
+    scores = enrollment.scores.where(course_score: false)
+    ag_ids = scores.pluck(:assignment_group_id)
+    groups = AssignmentGroup.where(id: ag_ids)
+    with_assignments = groups.filter { |g| g.assignments.present? }.pluck(:id)
+
+    with_assignments.each do |g_id|
+      assignments = Assignment.where(assignment_group_id: g_id).where(workflow_state: "published")
+      submissions = Submission.where(assignment_id: assignments.pluck(:id), user_id: enrollment.user_id)
+
+      does_not_have_submissions = true if submissions.pluck(:published_score) == [nil]
+
+      break if does_not_have_submissions
+    end
+
+    does_not_have_submissions
+  end
+
+  def any_group_failed?(enrollment, passing_grade)
+    is_fail = false
+
+    scores = enrollment.scores.where(course_score: false)
+    ag_ids = scores.pluck(:assignment_group_id)
+    groups = AssignmentGroup.where(id: ag_ids)
+    with_assignments = groups.filter { |g| g.assignments.present? }.pluck(:id)
+
+    with_assignments.each do |g_id|
+      assignments = Assignment.where(assignment_group_id: g_id).where(workflow_state: "published")
+      submissions = Submission.where(assignment_id: assignments.pluck(:id), user_id: enrollment.user_id)
+
+      next if submissions.pluck(:published_score) == [nil]
+
+      is_fail = true if (submissions.pluck(:published_score).sum / assignments.pluck(:points_possible).sum * 100) < passing_grade rescue false
+      break if is_fail
+    end
+
+    is_fail
   end
 
   def expire_pending_grade_publishing_statuses(last_publish_attempt_at)
@@ -3793,6 +3952,28 @@ class Course < ActiveRecord::Base
 
   def clear_caches_if_necessary
     clear_cache_key(:account_associations) if saved_change_to_root_account_id? || saved_change_to_account_id?
+  end
+
+  def fetch_component_full_completion_from_master
+    return if MasterCourses::MasterTemplate.is_master_course?(self)
+    return if self.component_full_completion.present?
+
+    master_course = self&.master_course_subscriptions&.active&.first&.master_template&.course
+    return unless master_course
+
+    self.component_full_completion = master_course.component_full_completion
+    self.save(validate: false)
+  end
+
+  def fetch_component_passing_grade_from_master
+    return if MasterCourses::MasterTemplate.is_master_course?(self)
+    return if self.component_passing_grade.present?
+
+    master_course = self&.master_course_subscriptions&.active&.first&.master_template&.course
+    return unless master_course
+
+    self.component_passing_grade = master_course.component_passing_grade
+    self.save(validate: false)
   end
 
   def refresh_content_participation_counts(_progress)

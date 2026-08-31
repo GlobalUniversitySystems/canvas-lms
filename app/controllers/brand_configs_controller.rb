@@ -117,8 +117,28 @@ class BrandConfigsController < ApplicationController
     brand_config = BrandConfig.for(opts)
 
     if existing_config(brand_config)
+      PaperTrail::BrandConfigVersion.create(
+        {
+          item_type: "BrandConfig",
+          item_id: brand_config&.md5 || "new",
+          event: 'update_existing_brand_config_values',
+          object: brand_config.as_json(include_root: false).to_yaml,
+          object_changes: brand_config.as_json(include_root: false).to_yaml,
+          whodunnit: @current_user&.id
+        }
+      )
       render json: { brand_config: brand_config.as_json(include_root: false) }
     else
+      PaperTrail::BrandConfigVersion.create(
+        {
+          item_type: "BrandConfig",
+          item_id: brand_config&.md5 || "new",
+          event: 'update_new_brand_config_values',
+          object: brand_config.as_json(include_root: false).to_yaml,
+          object_changes: brand_config.as_json(include_root: false).to_yaml,
+          whodunnit: @current_user&.id
+        }
+      )
       render json: {
         brand_config: brand_config.as_json(include_root: false),
         progress: progress_json(generate_css(brand_config), @current_user, session)
@@ -144,6 +164,16 @@ class BrandConfigsController < ApplicationController
                                  end
 
     BrandConfig.destroy_if_unused(old_md5) if old_md5 != session[:brand_config_md5]
+    PaperTrail::BrandConfigVersion.create(
+      {
+        item_type: "BrandConfig",
+        item_id: "preview",
+        event: 'activate_brand_config_for_user_session',
+        object: {activate_config: (params[:brand_config_md5].presence || 'new')}.to_yaml,
+        object_changes: {activate_config: (params[:brand_config_md5].presence || 'new')}.to_yaml,
+        whodunnit: @current_user&.id
+      }
+    )
     redirect_to account_theme_editor_path(@account)
   end
 
@@ -157,6 +187,17 @@ class BrandConfigsController < ApplicationController
 
     BrandConfig.destroy_if_unused(old_md5)
 
+    PaperTrail::BrandConfigVersion.create(
+      {
+        item_type: "BrandConfig",
+        item_id: new_md5,
+        event: 'publish_brand_config_to_account',
+        object: BrandConfig.find(new_md5).as_json(include_root: false).to_yaml,
+        object_changes: BrandConfig.find(new_md5).as_json(include_root: false).to_yaml,
+        whodunnit: @current_user&.id
+      }
+    )
+
     render json: {
       subAccountProgresses: [progress_json(progress, @current_user, session)]
     }
@@ -166,6 +207,16 @@ class BrandConfigsController < ApplicationController
   # clear out the session brand_config that you were prevewing.
   def destroy
     old_md5 = session.delete(:brand_config_md5).presence
+    PaperTrail::BrandConfigVersion.create(
+      {
+        item_type: "BrandConfig",
+        item_id: old_md5,
+        event: 'destroy_brand_config',
+        object: BrandConfig.find(old_md5).as_json(include_root: false).to_yaml,
+        object_changes: BrandConfig.find(old_md5).as_json(include_root: false).to_yaml,
+        whodunnit: @current_user&.id
+      }
+    )
     BrandConfig.destroy_if_unused(old_md5)
     redirect_to account_brand_configs_path(@account), notice: t("Theme editor changes have been cancelled.")
   end

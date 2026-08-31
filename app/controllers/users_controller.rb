@@ -487,7 +487,7 @@ class UsersController < ApplicationController
     # trail back to home if you are already home
     clear_crumbs
 
-    @show_footer = true
+    @show_footer = false
 
     if %r{\A/dashboard\z}.match?(request.path)
       return redirect_to(dashboard_url, status: :moved_permanently)
@@ -1195,6 +1195,15 @@ class UsersController < ApplicationController
       end
     end
     render json: { hidden: true }
+  end
+
+  def update_ilp
+    @current_user.ilp = params[:ilp]
+    if @current_user.save
+      render json: { success: true }
+    else
+      render json: { error: 'can not update ilp' }
+    end
   end
 
   # @API Upload a file
@@ -1997,6 +2006,8 @@ class UsersController < ApplicationController
     managed_attributes.concat %i[name short_name sortable_name] if @user.grants_right?(@current_user, :rename)
     managed_attributes << :terms_of_use if @user == (@real_current_user || @current_user)
     managed_attributes << :email if update_email
+    managed_attributes << :sno
+    managed_attributes << :ilp
 
     # we dropped birthdate from user but this will allow backwards compatability and prevent errors
     user_params.delete("birthdate")
@@ -2977,7 +2988,7 @@ class UsersController < ApplicationController
       user_params = params[:user]
                     .permit(:name, :short_name, :sortable_name, :time_zone, :show_user_services,
                             :avatar_image, :subscribe_to_emails, :locale, :bio, :terms_of_use,
-                            :self_enrollment_code, :initial_enrollment_type)
+                            :self_enrollment_code, :initial_enrollment_type, :sno, :ilp)
       if self_enrollment && user_params[:self_enrollment_code]
         user_params[:self_enrollment_code].strip!
       else

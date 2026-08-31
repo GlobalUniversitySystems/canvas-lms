@@ -17,6 +17,7 @@
  */
 
 import React from 'react'
+import round from 'round'
 import PropTypes from 'prop-types'
 import I18n from 'i18n!student_context_trayMetricsList'
 import {MetricsList as InstUIMetricsList} from '@instructure/ui-metric'
@@ -24,12 +25,14 @@ import {MetricsList as InstUIMetricsList} from '@instructure/ui-metric'
 class MetricsList extends React.Component {
   static propTypes = {
     analytics: PropTypes.object,
-    user: PropTypes.object
+    user: PropTypes.object,
+    course: PropTypes.object
   }
 
   static defaultProps = {
     analytics: null,
-    user: {}
+    user: {},
+    course: {}
   }
 
   get grade() {
@@ -37,19 +40,51 @@ class MetricsList extends React.Component {
       return null
     }
 
+    if (this.props.course && this.props.course.componentFullCompletion && this.props.course.submissionsConnection && this.props.course.submissionsConnection.edges && this.props.course.componentPassingGrade) {
+      const submissionScores = this.props.course.submissionsConnection.edges.map(e => e.submission.score)
+      if (submissionScores.length > 0 && Math.min(...this.props.course.submissionsConnection.edges.map(e => e.submission.score).filter(e => e)) < this.props.course.componentPassingGrade) {
+        return '-'
+      }
+    }
+
     const enrollment = this.props.user.enrollments[0]
     if (enrollment) {
       const grades = enrollment.grades
-      if (grades.override_grade != null) {
-        return grades.override_grade
-      } else if (grades.override_score != null) {
-        return `${grades.override_score}%`
-      } else if (grades.current_grade != null) {
-        return grades.current_grade
-      } else if (grades.current_score != null) {
-        return `${grades.current_score}%`
+      if (this.props.course.componentFullCompletion) {
+        if (grades.override_grade != null) {
+          if (this.props.course.componentPassingGrade && grades.override_grade < this.props.course.componentPassingGrade) {
+            return '-'
+          }
+          return round(grades.override_grade, 0)
+        } else if (grades.override_score != null) {
+          if (this.props.course.componentPassingGrade && grades.override_score < this.props.course.componentPassingGrade) {
+            return '-'
+          }
+          return `${round(grades.override_score, 0)}%`
+        } else if (grades.current_grade != null) {
+          if (this.props.course.componentPassingGrade && grades.current_grade < this.props.course.componentPassingGrade) {
+            return '-'
+          }
+          return round(grades.current_grade, 0)
+        } else if (grades.current_score != null) {
+          if (this.props.course.componentPassingGrade && grades.current_score < this.props.course.componentPassingGrade) {
+            return '-'
+          }
+          return `${round(grades.current_score, 0)}%`
+        }
+        return '-'
+      } else {
+        if (grades.override_grade != null) {
+          return grades.override_grade
+        } else if (grades.override_score != null) {
+          return `${grades.override_score}%`
+        } else if (grades.current_grade != null) {
+          return grades.current_grade
+        } else if (grades.current_score != null) {
+          return `${grades.current_score}%`
+        }
+        return '-'
       }
-      return '-'
     }
     return '-'
   }

@@ -155,6 +155,8 @@ module Api::V1::Assignment
     end
 
     hash["grades_published"] = assignment.grades_published? if opts[:include_grades_published]
+    hash["component_full_completion"] = assignment.context&.component_full_completion
+    hash["component_passing_grade"] = assignment.context&.component_passing_grade
 
     if opts[:overrides].present?
       hash["overrides"] = assignment_overrides_json(opts[:overrides], user)

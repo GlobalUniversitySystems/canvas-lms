@@ -184,6 +184,8 @@ export default class AssignmentGroupListItemView extends DraggableCollectionView
       displayableRules: @displayableRules()
       showWeight: showWeight
       groupWeight: data.group_weight
+      componentFullCompletion: data.component_full_completion
+      componentPassingGrade: data.component_passing_grade
       toggleMessage: @messages.toggleMessage
       hasFrozenAssignments: @model.hasFrozenAssignments? and @model.hasFrozenAssignments()
       hasIntegrationData: @model.hasIntegrationData? and @model.hasIntegrationData()

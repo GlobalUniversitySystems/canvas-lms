@@ -68,7 +68,7 @@ class User < ActiveRecord::Base
   has_many :planner_notes, dependent: :destroy
   has_many :viewed_submission_comments, dependent: :destroy
 
-  has_many :enrollments, dependent: :destroy
+  has_many :enrollments, -> { where("course_section_id NOT IN (SELECT id FROM #{CourseSection.quoted_table_name} WHERE is_lesson = true)") }, dependent: :destroy
 
   has_many :not_ended_enrollments, -> { where("enrollments.workflow_state NOT IN ('rejected', 'completed', 'deleted', 'inactive')") }, class_name: "Enrollment", multishard: true
   has_many :not_removed_enrollments, -> { where.not(workflow_state: %w[rejected deleted inactive]) }, class_name: "Enrollment", multishard: true
@@ -912,6 +912,14 @@ class User < ActiveRecord::Base
   def sortable_name
     self.sortable_name = read_attribute(:sortable_name) ||
                          User.last_name_first(self.name, likely_already_surname_first: false)
+  end
+
+  def ilp
+    read_attribute(:ilp)
+  end
+
+  def get_ilp
+    ilp
   end
 
   def primary_pseudonym

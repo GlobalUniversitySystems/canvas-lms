@@ -57,6 +57,8 @@ module Api::V1::CalendarEvent
       hash["location_name"] = event.location_name
     end
 
+    hash["is_lesson"] = event.is_lesson?
+
     hash["type"] = "event"
     if event.context_type == "CourseSection"
       hash["title"] += " (#{context.name})"

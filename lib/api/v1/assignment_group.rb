@@ -39,6 +39,9 @@ module Api::V1::AssignmentGroup
     hash = api_json(group, user, session, only: %w[id name position group_weight sis_source_id integration_data])
     hash["rules"] = group.rules_hash(stringify_json_ids: opts[:stringify_json_ids])
 
+    hash["component_full_completion"] = group.context&.component_full_completion rescue nil
+    hash["component_passing_grade"] = group.context&.component_passing_grade rescue nil
+
     if includes.include?("assignments")
       assignments = opts[:assignments] || group.visible_assignments(user)
 

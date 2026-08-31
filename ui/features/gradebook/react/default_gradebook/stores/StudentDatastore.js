@@ -26,7 +26,8 @@ function createStudentPlaceholder(id) {
     isInactive: false,
     isPlaceholder: true,
     loaded: false,
-    sections: []
+    sections: [],
+    ilp: false
   }
 }
 

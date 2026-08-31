@@ -42,7 +42,9 @@ function getProps(column, gradebook, options) {
 
     assignmentGroup: {
       groupWeight: assignmentGroup.group_weight,
-      name: assignmentGroup.name
+      name: assignmentGroup.name,
+      componentFullCompletion: assignmentGroup.component_full_completion,
+      componentPassingGrade: assignmentGroup.component_passing_grade
     },
 
     onApplyScoreToUngraded,

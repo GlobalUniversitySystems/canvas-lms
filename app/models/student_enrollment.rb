@@ -29,6 +29,7 @@ class StudentEnrollment < Enrollment
   }
   after_save :restore_submissions_and_scores
   after_save :republish_pace_plan_if_needed
+  after_create :maybe_enroll_in_lessons_later
 
   def student?
     true
@@ -66,6 +67,49 @@ class StudentEnrollment < Enrollment
     end
 
     score
+  end
+
+  def maybe_enroll_in_lessons_later
+    delay(run_at: 10.seconds.from_now).maybe_enroll_in_lessons(self)
+  end
+
+  def maybe_enroll_in_lessons(enrollment)
+    # enrollment = StudentEnrollment.find(id: enrollment_id[:id])
+    course = enrollment.course
+
+    return if enrollment.course_section_id != course.default_section.id
+
+    lessons = course.calendar_events.lessons
+    return if lessons.empty?
+
+    # student_ids = course.student_enrollments.pluck(:user_id).uniq
+
+    lessons.each do |lesson|
+      section = course.course_sections.find_by(event_id: lesson.id)
+      next unless section
+
+      StudentEnrollment.create(
+        course_id: course.id,
+        user_id: enrollment.user_id,
+        course_section_id: section.id,
+        role_id: enrollment.role_id,
+        workflow_state: 'active'
+      )
+
+      # student_ids.each do |student_id|
+      #   next if StudentEnrollment.exists?(course: course, user_id: student_id, course_section: section )
+      #
+      #   main_enrollment = course.student_enrollments.find_by(user_id: student_id, course_section_id: course.default_section)
+      #
+      #   StudentEnrollment.create(
+      #     course_id: course.id,
+      #     user_id: student_id,
+      #     course_section_id: section.id,
+      #     role_id: main_enrollment.role_id,
+      #     workflow_state: main_enrollment.workflow_state
+      #   )
+      # end
+    end
   end
 
   class << self

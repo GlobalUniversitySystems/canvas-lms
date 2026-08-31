@@ -85,8 +85,14 @@ module Api::V1::User
         end
       end
 
+      json[:ilp] = user&.ilp
+
       if user.pronouns
         json[:pronouns] = user.pronouns
+      end
+
+      if user.sno
+        json[:sno] = user.sno
       end
 
       json[:merged_into_user_id] = user.merged_into_user_id if user.deleted? && user.merged_into_user_id
@@ -216,6 +222,7 @@ module Api::V1::User
     hash = {
       id: user.id,
       anonymous_id: user.id.to_s(36),
+      ilp: user.ilp,
       display_name: user.short_name,
       avatar_image_url: avatar_url_for_user(user),
       html_url: participant_url,
@@ -278,6 +285,7 @@ module Api::V1::User
       end
       json[:role] = enrollment.role.name
       json[:role_id] = enrollment.role_id
+      json[:is_lesson] = enrollment.course_section&.is_lesson
       if enrollment.user == user || enrollment.course.grants_right?(user, session, :read_reports)
         json[:last_activity_at] = enrollment.last_activity_at
         json[:last_attended_at] = enrollment.last_attended_at

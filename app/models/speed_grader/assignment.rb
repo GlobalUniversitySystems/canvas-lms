@@ -103,7 +103,7 @@ module SpeedGrader
       includes << { all_submission_comments: { submission: { assignment: { context: :root_account } } } }
       submissions = assignment.submissions.where(user_id: students).preload(*includes)
 
-      student_json_fields = anonymous_students?(current_user: current_user, assignment: assignment) ? [] : %i[name id sortable_name]
+      student_json_fields = anonymous_students?(current_user: current_user, assignment: assignment) ? [] : %i[name id sortable_name ilp]
 
       res[:context][:students] = students.map do |student|
         json = student.as_json(include_root: false, methods: submission_comment_methods, only: student_json_fields)

@@ -43,7 +43,7 @@ export default class EditCalendarEventDetails {
     this.currentContextInfo = null
     this.$form = $(
       editCalendarEventTemplate({
-        title: this.event.title,
+        title: this.event.originalTitle || this.event.title,
         contexts: this.event.possibleContexts(),
         lockedTitle: this.event.lockedTitle,
         location_name: this.event.location_name,
@@ -191,6 +191,7 @@ export default class EditCalendarEventDetails {
     if (data.end_time) params.end_time = data.end_time
     if (data.duplicate) params.duplicate = data.duplicate
     if (data.important != null) params.important_dates = data.important
+    if (data.creation_source) params.creation_source = data.creation_source
 
     if (this.canUpdateConference()) {
       if (this.conference) {
@@ -333,6 +334,12 @@ export default class EditCalendarEventDetails {
       'calendar_event[location_name]': location_name,
       'calendar_event[important_dates]': data.important
     }
+
+    // Only set creation_source for new events
+    if (this.event.isNewEvent()) {
+      params['calendar_event[creation_source]'] = data.creation_source || 'canvas'
+    }
+
     if (this.canUpdateConference()) {
       if (this.conference) {
         const webConference = {

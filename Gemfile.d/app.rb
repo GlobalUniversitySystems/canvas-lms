@@ -34,6 +34,7 @@ else
 end
   gem "irb", "1.4.1"
   gem "open4", "1.3.4", require: false
+gem "concurrent-ruby", "1.3.4"
 
 gem "academic_benchmarks", "1.1.1", require: false
 gem "active_model-better_errors", "1.6.7", require: "active_model/better_errors"
@@ -53,6 +54,7 @@ gem "aws-sdk-sns", "1.36.0", require: false
 gem "aws-sdk-sqs", "1.34.0", require: false
 gem "aws-sdk-kms", "1.39.0", require: false
 gem "aws-sigv4", "1.2.2", require: false
+gem 'paper_trail'
 gem "barby", "0.6.8", require: false
   gem "rqrcode", "1.2.0", require: false
   gem "chunky_png", "1.3.14", require: false

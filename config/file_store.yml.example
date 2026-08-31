@@ -9,8 +9,7 @@ test:
   path_prefix: tmp/files
 
 production:
-  storage: local
-  path_prefix: tmp/files
+  storage: s3
 
 ## amazon storage example. requires valid amazon_s3.yml
 #

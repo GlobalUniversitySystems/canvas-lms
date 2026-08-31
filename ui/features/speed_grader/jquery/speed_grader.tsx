@@ -455,12 +455,13 @@ function initDropdown() {
   const optionsArray = window.jsonData.studentsWithSubmissions.map(student => {
     const {submission_state, submission} = student
     let {name} = student
+    let {ilp} = student
     const className = SpeedgraderHelpers.classNameBasedOnStudent({submission_state, submission})
     if (hideStudentNames || isAnonymous) {
       name = I18n.t('Student %{number}', {number: student.index + 1})
     }
 
-    return {[anonymizableId]: student[anonymizableId], anonymizableId, name, className}
+    return {[anonymizableId]: student[anonymizableId], anonymizableId, name, className, ilp}
   })
 
   const sectionSelectionOptionList = sectionSelectionOptions(

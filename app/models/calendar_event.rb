@@ -43,7 +43,7 @@ class CalendarEvent < ActiveRecord::Base
 
   PERMITTED_ATTRIBUTES = %i[title description start_at end_at location_name
                             location_address time_zone_edited cancel_reason participants_per_appointment
-                            remove_child_events all_day comments important_dates].freeze
+                            remove_child_events all_day comments important_dates creation_source].freeze
   def self.permitted_attributes
     PERMITTED_ATTRIBUTES
   end
@@ -61,6 +61,7 @@ class CalendarEvent < ActiveRecord::Base
   validates :description, length: { maximum: maximum_long_text_length, allow_blank: true }
   validates :title, length: { maximum: maximum_string_length, allow_blank: true }
   validates :comments, length: { maximum: 255, allow_blank: true }
+  validates :creation_source, inclusion: { in: %w[api canvas], message: "%{value} is not a valid creation source" }
   validate :validate_conference_visibility
   before_create :set_root_account
   before_save :default_values
@@ -69,6 +70,11 @@ class CalendarEvent < ActiveRecord::Base
   after_save :sync_parent_event
   after_save :sync_conference
   after_update :sync_child_events
+  after_create :enroll_students_in_lesson
+  after_update :update_section_name
+  after_destroy :destroy_section
+
+  scope :lessons, -> { where(creation_source: "api", context_type: 'Course') }
 
   # when creating/updating a calendar_event, you can give it a list of child
   # events. these will update/replace any existing child events. the format is:
@@ -127,6 +133,10 @@ class CalendarEvent < ActiveRecord::Base
 
   def hidden?
     !appointment_group? && !child_events.empty?
+  end
+
+  def is_lesson?
+    context_type == 'Course' && creation_source && creation_source == 'api'
   end
 
   def effective_context
@@ -346,6 +356,33 @@ class CalendarEvent < ActiveRecord::Base
     cascaded_changes = CASCADED_ATTRIBUTES.select { |attr| saved_change_to_attribute?(attr) }
     child_events.are_locked.update_all(locked_changes.index_with { |attr| send(attr) }) if locked_changes.present?
     child_events.are_unlocked.update_all(cascaded_changes.index_with { |attr| send(attr) }) if cascaded_changes.present?
+  end
+
+  def enroll_students_in_lesson
+    return unless is_lesson?
+
+    section = context.course_sections.build
+    section.name = "Lesson: #{title}"
+    section.default_section = false
+    section.is_lesson = true
+    section.event_id = self.id
+    section.root_account_id = context.root_account_id
+    section.save
+
+    context.enroll_students_in_section(section.reload.id)
+  end
+
+  def update_section_name
+    return unless is_lesson?
+    return unless saved_change_to_title?
+
+    context.course_sections.where(event_id: id, is_lesson: true, default_section: false).update_all(name: "Lesson: #{title}")
+  end
+
+  def destroy_section
+    return unless is_lesson?
+
+    context.course_sections.where(event_id: id, is_lesson: true, default_section: false).destroy_all
   end
 
   def sync_conference

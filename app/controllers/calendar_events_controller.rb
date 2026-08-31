@@ -58,6 +58,7 @@ class CalendarEventsController < ApplicationController
 
   def create
     params[:calendar_event][:time_zone_edited] = Time.zone.name if params[:calendar_event]
+    params[:calendar_event][:creation_source] ||= 'canvas' if params[:calendar_event]
     @event = @context.calendar_events.build(calendar_event_params)
     if authorized_action(@event, @current_user, :create) && authorize_user_for_conference(@current_user, @event.web_conference)
       respond_to do |format|

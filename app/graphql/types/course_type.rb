@@ -84,6 +84,8 @@ module Types
     key_field_id
 
     field :name, String, null: false
+    field :component_passing_grade, Integer, null: true
+    field :component_full_completion, Boolean, null: true
     field :course_code, String, "course short name", null: true
     field :state, CourseWorkflowState, method: :workflow_state, null: false
 
