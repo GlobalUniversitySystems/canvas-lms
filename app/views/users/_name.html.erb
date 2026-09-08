@@ -34,6 +34,10 @@
             <tr>
               <th><%= before_label('full_name', 'Full Name') %></th>
               <td class="name"><%=h @user.name %></td>
+              <% if @user.get_ilp %>
+                <th>Learning Disability Support Required: </th>
+                <td>Yes</td>
+              <% end %>
             </tr>
             <tr>
               <th><%= before_label('display_name', 'Display Name') %></th>

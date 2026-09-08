@@ -119,6 +119,11 @@
     </a>
     <% end %>
 
+    <a class="btn button-sidebar-wide" href="/courses/<%= @context.id %>/analytics">
+      <i class="icon-stats"></i>
+      View Course Analytics
+    </a>
+
     <% if @context_enrollment %>
     <a id="view_course_notifications_btn" class="btn button-sidebar-wide" href="<%= context_url(@context, :context_url, :view => 'notifications') %>">
       <i class="icon-<%= @course_notifications_enabled ? "unmuted" : "muted" %>"></i>
