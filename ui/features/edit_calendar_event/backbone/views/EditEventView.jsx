@@ -92,6 +92,7 @@ export default class EditCalendarEventView extends Backbone.View {
         'course_sections',
         'rrule',
         'calendar_event_context_code',
+        'creation_source',
       )
       if (picked_params.start_date) {
         // this comes from the calendar via url params when editing an event

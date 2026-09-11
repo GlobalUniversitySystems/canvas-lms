@@ -573,6 +573,7 @@ class CalendarEventsApiController < ApplicationController
     end
 
     params_for_create = calendar_event_params
+    params_for_create[:creation_source] = 'api' unless params_for_create.key?(:creation_source)
     if params_for_create.key?(:web_conference)
       web_conference_params = params_for_create[:web_conference]
       unless web_conference_params.empty?
@@ -873,6 +874,9 @@ class CalendarEventsApiController < ApplicationController
       @event.updating_user = @current_user
       @event.cancel_reason = params[:cancel_reason]
       if @event.destroy
+        if @event.is_a?(CalendarEvent)
+          @event.destroy_section
+        end
         if @event.appointment_group && @event.appointment_group.appointments.count == 0
           @event.appointment_group.destroy(@current_user)
         end

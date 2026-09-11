@@ -63,6 +63,7 @@ export default class CalendarEvent extends Backbone.Model {
       'web_conference',
       'important_dates',
       'blackout_date',
+      'creation_source',
       'rrule',
     ])
 
@@ -88,6 +89,10 @@ export default class CalendarEvent extends Backbone.Model {
   present() {
     const result = Backbone.Model.prototype.toJSON.call(this)
     result.newRecord = !result.id
+    // Strip "Lesson: " prefix for editing if it's a lesson event
+    if (result.is_lesson && result.title && result.title.startsWith('Lesson: ')) {
+      result.title = result.title.substring(8) // Remove "Lesson: " prefix
+    }
     return result
   }
 

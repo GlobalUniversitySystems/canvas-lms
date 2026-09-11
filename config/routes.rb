@@ -38,6 +38,8 @@ CanvasRails::Application.routes.draw do
 
   get "/brand_configs/versions/:date", to: "brand_config_versions#index"
 
+  get "api/v1/rollcall_sections/:course_id", to: "rollcall_sections#index"
+
   get "acceptable_use_policy", to: "accounts#acceptable_use_policy"
 
   resources :submissions, only: [] do

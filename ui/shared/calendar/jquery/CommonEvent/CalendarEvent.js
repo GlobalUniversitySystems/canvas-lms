@@ -44,7 +44,10 @@ Object.assign(CalendarEvent.prototype, {
     }
     this.object = this.calendarEvent = data
     if (data.id) this.id = `calendar_event_${data.id}`
-    this.title = data.title || 'Untitled'
+    const baseTitle = data.title || 'Untitled'
+    this.originalTitle = baseTitle // Store original title without prefix for editing
+    this.title = data.is_lesson ? `Lesson: ${baseTitle}` : baseTitle
+    this.isLesson = data.is_lesson
     this.comments = data.comments
     this.location_name = data.location_name
     this.location_address = data.location_address

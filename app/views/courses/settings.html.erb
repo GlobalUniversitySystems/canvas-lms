@@ -806,7 +806,7 @@
         </div>
         <div class="clear"></div>
       </li>
-      <% @context.course_sections.active.union(@context.moved_sections.active).order(CourseSection.best_unicode_collation_key('name')).each do |section| %>
+      <% @context.course_sections.active.non_lesson.union(@context.moved_sections.active).order(CourseSection.best_unicode_collation_key('name')).each do |section| %>
         <li class="section">
           <% if can_do(section, @current_user, :read) && section.course_id == @context.id %>
             <a href="<%= context_url(@context, :context_section_url, section) %>" class="name">

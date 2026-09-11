@@ -26,11 +26,16 @@ module Api::V1::Section
 
   def section_json(section, user, session, includes, options = {})
     res = section.as_json(include_root: false,
-                          only: %w[id name course_id nonxlist_course_id start_at end_at restrict_enrollments_to_section_dates created_at])
+                          only: %w[id name course_id nonxlist_course_id start_at end_at restrict_enrollments_to_section_dates created_at event_id])
     if options[:allow_sis_ids] || section.course.grants_any_right?(user, :read_sis, :manage_sis)
       res["sis_section_id"] = section.sis_source_id
       res["sis_course_id"] = section.course.sis_source_id
       res["integration_id"] = section.integration_id
+    end
+    res["name"] = section.name
+    if section.is_lesson? && section.event_id.present?
+      event = CalendarEvent.find(section.event_id)
+      res["name"] = "#{section.name}, #{event.start_at&.to_date&.to_s}" if event
     end
     res["sis_import_id"] = section.sis_batch_id if section.course.grants_right?(user, session, :manage_sis)
     if includes.include?("students")

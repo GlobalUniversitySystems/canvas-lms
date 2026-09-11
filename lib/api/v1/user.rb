@@ -310,6 +310,7 @@ module Api::V1::User
       end
       json[:role] = enrollment.role.name
       json[:role_id] = enrollment.role_id
+      json[:is_lesson] = enrollment.course_section&.is_lesson
       if enrollment.user_id == user.id || enrollment.course.grants_right?(user, session, :read_reports)
         json[:last_activity_at] = enrollment.last_activity_at
         json[:last_attended_at] = enrollment.last_attended_at

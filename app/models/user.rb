@@ -83,7 +83,7 @@ class User < ApplicationRecord
   has_many :planner_notes, dependent: :destroy
   has_many :viewed_submission_comments, dependent: :destroy
 
-  has_many :enrollments, dependent: :destroy
+  has_many :enrollments, -> { where("course_section_id NOT IN (SELECT id FROM #{CourseSection.quoted_table_name} WHERE is_lesson = true)") }, dependent: :destroy
   has_many :course_paces, dependent: :destroy
   has_many :course_reports, dependent: :destroy
 

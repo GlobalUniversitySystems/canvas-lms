@@ -427,6 +427,7 @@ class CourseSection < ApplicationRecord
   end
 
   scope :active, -> { where("course_sections.workflow_state<>'deleted'") }
+  scope :non_lesson, -> { where(is_lesson: false) }
 
   scope :sis_sections, ->(account, *source_ids) { where(root_account_id: account, sis_source_id: source_ids).order(:sis_source_id) }
 

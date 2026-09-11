@@ -255,7 +255,8 @@ const CalendarEventDetailsForm = ({event, closeCB, contextChangeCB, setSetContex
     // @ts-expect-error TS2339 (typescriptify)
     params.course_pacing_enabled = context.course_pacing_enabled
     // @ts-expect-error TS2339 (typescriptify)
-    params.calendar_event_context_code = event.calendarEvent?.context_code
+    if (event.creation_source) params.creation_source = event.creation_source
+
     if (typeof rrule === 'string') {
       // @ts-expect-error TS2339 (typescriptify)
       params.rrule = rrule
@@ -388,6 +389,7 @@ const CalendarEventDetailsForm = ({event, closeCB, contextChangeCB, setSetContex
       params['calendar_event[context_code]'] = context.asset_string
       // @ts-expect-error TS2551 (typescriptify)
       if (rrule) params['calendar_event[rrule]'] = rrule
+      params['calendar_event[creation_source]'] = event.creation_source || 'canvas'
       const objectData = {
         calendar_event: {
           title: params['calendar_event[title]'],

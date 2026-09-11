@@ -68,6 +68,7 @@ class CalendarEvent < ApplicationRecord
                             important_dates
                             series_uuid
                             rrule
+                            creation_source
                             blackout_date].freeze
   def self.permitted_attributes
     PERMITTED_ATTRIBUTES
@@ -87,6 +88,7 @@ class CalendarEvent < ApplicationRecord
   validates_associated :context, if: ->(record) { record.validate_context }
   validates :description, length: { maximum: maximum_long_text_length, allow_blank: true }
   validates :title, length: { maximum: maximum_string_length, allow_blank: true }
+  validates :creation_source, inclusion: { in: %w[api canvas], message: "%{value} is not a valid creation source" }
   validates :comments, length: { maximum: 255, allow_blank: true }
   validate :validate_conference_visibility
   before_create :set_root_account
@@ -96,6 +98,11 @@ class CalendarEvent < ApplicationRecord
   after_save :sync_parent_event
   after_save :sync_conference
   after_update :sync_child_events
+  after_create :enroll_students_in_lesson
+  after_update :update_section_name
+  after_destroy :destroy_section
+
+  scope :lessons, -> { where(creation_source: "api", context_type: 'Course') }
 
   # when creating/updating a calendar_event, you can give it a list of child
   # events. these will update/replace any existing child events. the format is:
@@ -157,6 +164,10 @@ class CalendarEvent < ApplicationRecord
 
   def hidden?
     !appointment_group? && !child_events.empty?
+  end
+
+  def is_lesson?
+    context_type == 'Course' && creation_source && creation_source == 'api'
   end
 
   def in_a_series?
@@ -389,6 +400,33 @@ class CalendarEvent < ApplicationRecord
     cascaded_changes = CASCADED_ATTRIBUTES.select { |attr| saved_change_to_attribute?(attr) }
     child_events.are_locked.update_all(locked_changes.index_with { |attr| send(attr) }) if locked_changes.present?
     child_events.are_unlocked.update_all(cascaded_changes.index_with { |attr| send(attr) }) if cascaded_changes.present?
+  end
+
+  def enroll_students_in_lesson
+    return unless is_lesson?
+
+    section = context.course_sections.build
+    section.name = "Lesson: #{title}"
+    section.default_section = false
+    section.is_lesson = true
+    section.event_id = self.id
+    section.root_account_id = context.root_account_id
+    section.save
+
+    context.enroll_students_in_section(section.reload.id)
+  end
+
+  def update_section_name
+    return unless is_lesson?
+    return unless saved_change_to_title?
+
+    context.course_sections.where(event_id: id, is_lesson: true, default_section: false).update_all(name: "Lesson: #{title}")
+  end
+
+  def destroy_section
+    return unless is_lesson?
+
+    context.course_sections.where(event_id: id, is_lesson: true, default_section: false).destroy_all
   end
 
   def sync_conference
