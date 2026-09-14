@@ -68,7 +68,7 @@ const CalendarEventDetailsForm = ({event, closeCB, contextChangeCB, setSetContex
   const initTime = time => (!time || event.allDay ? '' : time)
   const today = moment().tz(timezone)
 
-  const [title, setTitle] = useState(event.title || '')
+  const [title, setTitle] = useState(event.originalTitle || event.title || '')
   const [context, setContext] = useState(event.contextInfo || event.allPossibleContexts[0])
   const [location, setLocation] = useState(event.location_name || '')
   const [date, setDate] = useState(tz.parse(event.startDate().format('YYYY-MM-DD'), timezone))
@@ -338,7 +338,7 @@ const CalendarEventDetailsForm = ({event, closeCB, contextChangeCB, setSetContex
     const endAt = addTimeToDate(endTime)
 
     const params = {
-      'calendar_event[title]': title != null ? title : event.title,
+      'calendar_event[title]': title != null ? title : event.originalTitle || event.title,
       'calendar_event[start_at]':
         // @ts-expect-error TS18047 (typescriptify)
         startAt && shouldEnableTimeFields() ? startAt.toISOString() : date.toISOString(),
@@ -389,6 +389,7 @@ const CalendarEventDetailsForm = ({event, closeCB, contextChangeCB, setSetContex
       params['calendar_event[context_code]'] = context.asset_string
       // @ts-expect-error TS2551 (typescriptify)
       if (rrule) params['calendar_event[rrule]'] = rrule
+      // @ts-expect-error TS2551 (typescriptify)
       params['calendar_event[creation_source]'] = event.creation_source || 'canvas'
       const objectData = {
         calendar_event: {
@@ -455,6 +456,7 @@ const CalendarEventDetailsForm = ({event, closeCB, contextChangeCB, setSetContex
 
   return (
     <View as="form" data-testid="calendar-event-form" onSubmit={formSubmit} margin="small">
+      <input type="hidden" name="calendar_event[creation_source]" value="canvas" />
       <FormFieldGroup description="" rowSpacing="small" vAlign="middle">
         <TextInput
           data-testid="edit-calendar-event-form-title"
