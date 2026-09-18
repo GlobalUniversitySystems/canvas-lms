@@ -2046,6 +2046,7 @@ class CoursesController < ApplicationController
               newquizzes_on_quiz_page: @context.root_account.feature_enabled?(:newquizzes_on_quiz_page)
             }
           )
+          js_env(RESTRICT_GROUP_MANAGEMENT: (FeatureFlag.find_by(feature: :test_f)&.state == 'on' && !'admin'.in?(@current_user&.roles(Account.default))))
           js_env(:COURSE_HOME => true)
           @upcoming_assignments = get_upcoming_assignments(@context)
         when 'modules'

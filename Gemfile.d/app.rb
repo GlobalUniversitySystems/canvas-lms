@@ -42,6 +42,7 @@ gem 'aws-sdk-sns', '1.21.0', require: false
 gem 'aws-sdk-sqs', '1.23.1', require: false
 gem 'aws-sdk-kms', '1.29.0', require: false
 gem 'aws-sigv4', '1.1.1', require: false
+gem 'paper_trail'
 gem 'barby', '0.6.8', require: false
   gem 'rqrcode', '1.1.2', require: false
   gem 'chunky_png', '1.3.11', require: false
@@ -55,6 +56,8 @@ gem 'canvas_webex', '0.17'
 gem 'crocodoc-ruby', '0.0.1', require: false
 gem 'ddtrace', '0.33.1', require: false
 gem 'encrypted_cookie_store-instructure', '1.2.10', require: 'encrypted_cookie_store'
+gem 'faraday', '0.17.4'
+gem 'faraday_middleware', '~> 0.14.0'
 gem 'folio-pagination', '0.0.12', require: 'folio/rails'
 gem 'ffi', '1.12.2', require: false
 gem 'gepub', '1.0.11'

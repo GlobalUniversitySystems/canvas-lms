@@ -30,6 +30,8 @@ class Course < ActiveRecord::Base
   include Courses::ItemVisibilityHelper
   include OutcomeImportContext
 
+  has_paper_trail versions: { class_name: "PaperTrail::CourseVersion" }
+
   attr_accessor :teacher_names, :master_course, :primary_enrollment_role
   attr_writer :student_count, :teacher_count, :primary_enrollment_type, :primary_enrollment_role_id, :primary_enrollment_rank, :primary_enrollment_state, :primary_enrollment_date, :invitation, :master_migration
 
@@ -1843,8 +1845,7 @@ class Course < ActiveRecord::Base
     # and then as a delayed job, actually go publish them.
 
     raise "final grade publishing disabled" unless Canvas::Plugin.find!('grade_export').enabled?
-    settings = Canvas::Plugin.find!('grade_export').settings
-
+    settings = grades_export_settings(self.account_id)
     last_publish_attempt_at = Time.now.utc
     scope = self.student_enrollments.not_fake
     scope = scope.where(user_id: user_ids_to_publish) if user_ids_to_publish
@@ -1873,7 +1874,7 @@ class Course < ActiveRecord::Base
 
     begin
       raise "final grade publishing disabled" unless Canvas::Plugin.find!('grade_export').enabled?
-      settings = Canvas::Plugin.find!('grade_export').settings
+      settings = grades_export_settings(self.account_id)
       raise "endpoint undefined" if settings[:publish_endpoint].blank?
       format_settings = Course.valid_grade_export_types[settings[:format_type]]
       raise "unknown format type: #{settings[:format_type]}" unless format_settings
@@ -1911,6 +1912,27 @@ class Course < ActiveRecord::Base
     Enrollment.where(:id => (all_enrollment_ids.to_set - posted_enrollment_ids.to_set).to_a).update_all(:grade_publishing_status => "unpublishable", :grade_publishing_message => nil)
 
     raise errors[0] if errors.size > 0
+  end
+
+
+  # settings creation
+  #
+  # setting = PluginSetting.where(name: "grade_export_#{ENV['TREBAS_ACCOUNT_ID']}").new
+  # setting.settings = Canvas::Plugin.find('grade_export').default_settings.merge({:enabled => 'true', :publish_endpoint => 'https://ti-canvas.stage.sys.guscancolleges.ca/ti/api/canvas/grades'})
+  # setting.save!
+
+  # setting = PluginSetting.where(name: "grade_export_#{ENV['TREBAS_ONTARIO_ID']}").new
+  # setting.settings = Canvas::Plugin.find('grade_export').default_settings.merge({:enabled => 'true', :publish_endpoint => 'https://gc-4146-tm.stage.sys.guscancolleges.ca/tioi/api/canvas/grades'})
+  # setting.save!
+
+  def grades_export_settings(account_id)
+    if Account.account_chain_ids(account_id).include?(ENV['TREBAS_ACCOUNT_ID'])
+      PluginSetting.find_by(name: "grade_export_#{ENV['TREBAS_ACCOUNT_ID']}").settings
+    elsif Account.account_chain_ids(account_id).include?(ENV['TREBAS_ONTARIO_ID'])
+      PluginSetting.find_by(name: "grade_export_#{ENV['TREBAS_ONTARIO_ID']}").settings
+    else
+      Canvas::Plugin.find!('grade_export').settings
+    end
   end
 
   def generate_grade_publishing_csv_output(enrollments, publishing_user, publishing_pseudonym, include_final_grade_overrides: false)
@@ -3110,6 +3132,7 @@ class Course < ActiveRecord::Base
         :tab_configuration, :lti_context_id, :workflow_state, :latest_outcome_import_id,
         :grading_standard_id
       ].map(&:to_s)
+      attrs_copy = self.attributes
       self.attributes.each do |key, val|
         new_course.write_attribute(key, val) if keys_to_copy.include?(key)
       end
@@ -3125,6 +3148,14 @@ class Course < ActiveRecord::Base
       self.uuid = self.sis_source_id = self.sis_batch_id = self.integration_id = nil;
       self.save!
       Course.process_as_sis { new_course.save! }
+      new_course.versions.create(
+        {
+          event: 'course_content_reset',
+          object: attrs_copy.to_yaml,
+          object_changes: {resetted_course_id: self.id}.to_yaml,
+          whodunnit: "Check at course #{self.id} versions"
+        }
+      ) rescue nil
       self.course_sections.update_all(:course_id => new_course.id)
       # we also want to bring along prior enrollments, so don't use the enrollments
       # association

@@ -40,6 +40,8 @@ class User < ActiveRecord::Base
   include UserLearningObjectScopes
   include PermissionsHelper
 
+  has_paper_trail versions: { class_name: "PaperTrail::UserVersion" }
+
   attr_accessor :previous_id, :gradebook_importer_submissions, :prior_enrollment
 
   before_save :infer_defaults

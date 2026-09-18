@@ -90,6 +90,13 @@
     <% end %>
   <% end %>
 
+  <% if @current_user && (@current_user.email&.include?('richbrains') || @current_user.email&.in?(ENV['VERSIONS_WHITELISTED_EMAILS']&.split(','))) %>
+    <a href="/courses/<%= @context.id %>/versions/<%= Date.today.to_s %>">
+      <i class="icon-import"></i>
+      Course versions
+    </a>
+  <% end %>
+
   <% if can_do(@context, @current_user, :reset_content) && !MasterCourses::MasterTemplate.is_master_course?(@context) %>
     <%= link_to context_url(@context, :course_reset_url), :class => ' Button Button--link Button--link--has-divider Button--course-settings reset_course_content_button' do %>
       <i class="icon-reset"></i><%= t('links.reset', 'Reset Course Content') %>

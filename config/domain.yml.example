@@ -9,7 +9,7 @@ development:
   # ssl: true
 
 production:
-  domain: "canvas.example.com"
+  domain: <%= ENV['DOMAIN'] %>
   # whether this instance of canvas is served over ssl (https) or not
   # defaults to true for production, false for test/development
   ssl: true
