@@ -55,14 +55,16 @@
         </span>
       {{/if}}
 
-      <a
-        href="#"
-        class="btn icon-plus"
-        id="addGroup"
-        role="button"
-        title='{{#t "title_add_group"}}Add Assignment Group{{/t}}'
-        aria-label='{{#t "title_add_group"}}Add Assignment Group{{/t}}'
-      >{{#t "add_group"}}Group{{/t}}</a>
+      {{#unless ENV.RESTRICT_GROUP_MANAGEMENT}}
+        <a
+          href="#"
+          class="btn icon-plus"
+          id="addGroup"
+          role="button"
+          title='{{#t "title_add_group"}}Add Assignment Group{{/t}}'
+          aria-label='{{#t "title_add_group"}}Add Assignment Group{{/t}}'
+        >{{#t "add_group"}}Group{{/t}}</a>
+      {{/unless}}
 
       <a
         href="{{ENV.URLS.new_assignment_url}}"

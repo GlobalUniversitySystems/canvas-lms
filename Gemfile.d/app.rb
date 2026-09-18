@@ -42,6 +42,7 @@ gem 'aws-sdk-sns', '1.21.0', require: false
 gem 'aws-sdk-sqs', '1.23.1', require: false
 gem 'aws-sdk-kms', '1.29.0', require: false
 gem 'aws-sigv4', '1.1.1', require: false
+gem 'paper_trail'
 gem 'barby', '0.6.8', require: false
   gem 'rqrcode', '1.1.2', require: false
   gem 'chunky_png', '1.3.11', require: false

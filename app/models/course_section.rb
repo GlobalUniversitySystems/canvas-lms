@@ -19,6 +19,8 @@
 class CourseSection < ActiveRecord::Base
   include Workflow
 
+  has_paper_trail versions: { class_name: "PaperTrail::CourseVersion" }
+
   belongs_to :course
   belongs_to :nonxlist_course, :class_name => 'Course'
   belongs_to :root_account, :class_name => 'Account'

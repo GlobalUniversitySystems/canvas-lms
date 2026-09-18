@@ -87,21 +87,25 @@
             <i class="icon-more" aria-hidden="true"></i>
           </a>
           <ul class="al-options">
-            <li>
-              <a
-                class="edit_group icon-edit"
-                aria-label="{{#t}}Edit Assignment Group{{/t}}"
-                data-focus-returns-to="ag_{{id}}_manage_link"
-              >{{#t}}Edit{{/t}}</a>
-            </li>
+            {{#unless ENV.RESTRICT_GROUP_MANAGEMENT}}
+              <li>
+                <a
+                  class="edit_group icon-edit"
+                  aria-label="{{#t}}Edit Assignment Group{{/t}}"
+                  data-focus-returns-to="ag_{{id}}_manage_link"
+                >{{#t}}Edit{{/t}}</a>
+              </li>
+            {{/unless}}
             {{#if canDelete}}
-            <li>
-              <a
-                class="delete_group icon-trash"
-                aria-label='{{#t}}Delete Assignment Group{{/t}}'
-                data-focus-returns-to="ag_{{id}}_manage_link"
-              >{{#t}}Delete{{/t}}</a>
-            </li>
+              {{#unless ENV.RESTRICT_GROUP_MANAGEMENT}}
+                <li>
+                  <a
+                    class="delete_group icon-trash"
+                    aria-label='{{#t}}Delete Assignment Group{{/t}}'
+                    data-focus-returns-to="ag_{{id}}_manage_link"
+                  >{{#t}}Delete{{/t}}</a>
+                </li>
+              {{/unless}}
             {{else}}
             <li>
               <a

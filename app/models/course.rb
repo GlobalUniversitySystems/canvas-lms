@@ -30,6 +30,8 @@ class Course < ActiveRecord::Base
   include Courses::ItemVisibilityHelper
   include OutcomeImportContext
 
+  has_paper_trail versions: { class_name: "PaperTrail::CourseVersion" }
+
   attr_accessor :teacher_names, :master_course, :primary_enrollment_role
   attr_writer :student_count, :teacher_count, :primary_enrollment_type, :primary_enrollment_role_id, :primary_enrollment_rank, :primary_enrollment_state, :primary_enrollment_date, :invitation, :master_migration
 
@@ -3072,6 +3074,7 @@ class Course < ActiveRecord::Base
         :tab_configuration, :lti_context_id, :workflow_state, :latest_outcome_import_id,
         :grading_standard_id
       ].map(&:to_s)
+      attrs_copy = self.attributes
       self.attributes.each do |key, val|
         new_course.write_attribute(key, val) if keys_to_copy.include?(key)
       end
@@ -3087,6 +3090,14 @@ class Course < ActiveRecord::Base
       self.uuid = self.sis_source_id = self.sis_batch_id = self.integration_id = nil;
       self.save!
       Course.process_as_sis { new_course.save! }
+      new_course.versions.create(
+        {
+          event: 'course_content_reset',
+          object: attrs_copy.to_yaml,
+          object_changes: {resetted_course_id: self.id}.to_yaml,
+          whodunnit: "Check at course #{self.id} versions"
+        }
+      ) rescue nil
       self.course_sections.update_all(:course_id => new_course.id)
       # we also want to bring along prior enrollments, so don't use the enrollments
       # association

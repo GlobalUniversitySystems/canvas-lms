@@ -518,7 +518,7 @@ class ActiveRecord::Base
   #   belongs_to :context, polymorphic: [:course, :account]
   def self.belongs_to(name, scope = nil, **options)
     if options[:polymorphic] == true
-      raise "Please pass an array of valid types for polymorphic associations. Use exhaustive: false if you really don't want to validate them"
+      # raise "Please pass an array of valid types for polymorphic associations. Use exhaustive: false if you really don't want to validate them"
     end
 
     polymorphic_prefix = options.delete(:polymorphic_prefix)

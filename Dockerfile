@@ -6,7 +6,7 @@
 # this local repo which is also published at:
 # https://github.com/instructure/canvas-lms/tree/master/doc/docker
 ARG RUBY_PASSENGER=2.4-xenial
-FROM instructure/ruby-passenger:$RUBY_PASSENGER
+FROM richbrains/canvas:$RUBY_PASSENGER
 ARG POSTGRES_VERSION=9.5
 
 ENV APP_HOME /usr/src/app/
@@ -16,6 +16,8 @@ ENV YARN_VERSION 1.19.1-1
 
 USER root
 WORKDIR /root
+RUN sed -i 's#mozilla/DST_Root_CA_X3.crt#!mozilla/DST_Root_CA_X3.crt#g' /etc/ca-certificates.conf
+RUN update-ca-certificates
 RUN curl -sL https://deb.nodesource.com/setup_10.x | bash - \
   && curl -sS https://dl.yarnpkg.com/debian/pubkey.gpg | apt-key add - \
   && echo "deb https://dl.yarnpkg.com/debian/ stable main" > /etc/apt/sources.list.d/yarn.list \
@@ -28,6 +30,7 @@ RUN curl -sL https://deb.nodesource.com/setup_10.x | bash - \
        yarn="$YARN_VERSION" \
        libxmlsec1-dev \
        python-lxml \
+       python3-lxml \
        libicu-dev \
        parallel \
        postgresql-client-$POSTGRES_VERSION \

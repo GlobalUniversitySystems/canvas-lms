@@ -26,6 +26,9 @@ CanvasRails::Application.routes.draw do
   post "/api/graphql", to: "graphql#execute"
   get 'graphiql', to: 'graphql#graphiql'
 
+  get "/users/:id/versions/:date", to: "user_versions#index"
+  get "/courses/:id/versions/:date", to: "course_versions#index"
+
   resources :submissions, only: [] do
     resources :submission_comments, path: :comments, only: :index, defaults: { format: :pdf }
     resources :docviewer_audit_events, only: [:create], constraints: { format: :json }
