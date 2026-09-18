@@ -70,6 +70,24 @@ RUN npm install -g npm@9.8.1 && npm cache clean --force
 
 USER docker
 
+WORKDIR $APP_HOME
+
+COPY Gemfile      ${APP_HOME}
+COPY Gemfile.d    ${APP_HOME}Gemfile.d
+COPY config       ${APP_HOME}config
+COPY --chown=docker:docker gems         ${APP_HOME}gems
+COPY --chown=docker:docker vendor/gems  ${APP_HOME}vendor/gems
+COPY --chown=docker:docker packages     ${APP_HOME}packages
+COPY script       ${APP_HOME}script
+COPY package.json ${APP_HOME}
+COPY yarn.lock    ${APP_HOME}
+
+RUN bundle install --jobs 8 \
+  && yarn install --network-timeout 100000 --pure-lockfile
+USER root
+
+COPY . $APP_HOME
+
 RUN set -eux; \
   mkdir -p \
     .yardoc \
@@ -89,4 +107,20 @@ RUN set -eux; \
     tmp \
     /home/docker/.bundle/ \
     /home/docker/.cache/yarn \
-    /home/docker/.gem/
+    /home/docker/.gem/\
+    && find ${APP_HOME} /home/docker ! -user docker -print0 | xargs -0 chown -h docker:docker
+
+USER docker
+# update Gemfile.lock in cases where a lock file was pulled in during the `COPY . $APP_HOME` step
+# RUN bundle lock --update
+# TODO: switch to canvas:compile_assets_dev once we stop using this Dockerfile in production/e2e
+#RUN COMPILE_ASSETS_NPM_INSTALL=0 bundle exec rake canvas:compile_assets
+RUN COMPILE_ASSETS_API_DOCS=0 \
+    COMPILE_ASSETS_BRAND_CONFIGS=0 \
+    COMPILE_ASSETS_NPM_INSTALL=1 \
+    COMPILE_ASSETS_STYLEGUIDE=0 \
+    bundle exec rails canvas:compile_assets
+
+RUN RAILS_ENV=production bundle exec rake js:webpack_production
+
+RUN chown docker:docker * -R

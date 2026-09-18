@@ -42,13 +42,13 @@ module Lti::IMS::Concerns
     end
 
     def allow_line_items?
-      return false unless @context.root_account.feature_enabled? :lti_deep_linking_line_items
+      return false unless @context.root_account.reload.feature_enabled? :lti_deep_linking_line_items
 
       ALLOW_LINE_ITEM_PLACEMENTS.include?(return_url_parameters[:placement])
     end
 
     def create_new_module?
-      return false unless @context.root_account.feature_enabled?(:lti_deep_linking_module_index_menu_modal)
+      return false unless @context.root_account.reload.feature_enabled?(:lti_deep_linking_module_index_menu_modal)
 
       CREATE_NEW_MODULE_PLACEMENTS.include?(return_url_parameters[:placement])
     end

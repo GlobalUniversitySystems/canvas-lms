@@ -24,6 +24,7 @@ require "action_controller/railtie"
 require "action_mailer/railtie"
 # require "sprockets/railtie" # Do not enable the Rails Asset Pipeline
 require "rails/test_unit/railtie"
+require "ostruct"
 
 Bundler.require(*Rails.groups)
 
@@ -78,7 +79,7 @@ module CanvasRails
     config.time_zone = "UTC"
 
     log_config = Rails.root.join("config/logging.yml").file? && Rails.application.config_for(:logging).with_indifferent_access
-    log_config = { "logger" => "rails", "log_level" => "debug" }.merge(log_config || {})
+    log_config = { "logger" => "rails", "log_level" => "info" }.merge(log_config || {})
     opts = {}
     require "canvas_logger"
 

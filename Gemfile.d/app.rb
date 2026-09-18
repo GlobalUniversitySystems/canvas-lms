@@ -20,9 +20,10 @@
 # NOTE: Indented gems are meant to indicate optional dependencies of parent gems
 
 gem "bootsnap", "~> 1.16", require: false
-gem "rails", ($canvas_rails == "7.1") ? "~> 7.1.3" : "~> 7.0.4"
+gem "rails", ($canvas_rails == "7.1") ? "~> 7.1.3" : "7.0.8.4"
   gem "rack", "~> 3.0" if $canvas_rails == "7.1" # needed to force Rack 3 due to a confluence of dependencies involving pact
 gem "switchman", "~> 3.5"
+gem "concurrent-ruby", "1.3.4"
 gem "guardrail", "~> 3.0"
 gem "switchman-inst-jobs", "~> 4.0"
 gem "irb", "~> 1.7"
@@ -94,6 +95,7 @@ else
   gem "rack-brotli", "~> 1.2"
 end
 gem "rails-observers", "0.1.5"
+gem "sqlite3", "~> 1.7.3"
 gem "ratom-nokogiri", "0.10.11", require: false
   gem "nokogiri", "1.15.5" # see https://github.com/sparklemotion/nokogiri/issues/3102
 gem "redcarpet", "~> 3.6", require: false

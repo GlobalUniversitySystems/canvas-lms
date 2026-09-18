@@ -46,9 +46,9 @@ npm-debug.log
 /storybook-static/
 /tmp/*
 !/tmp/.keep
-/vendor
 yarn-error.log
 dump.rdb
+.idea
 .eslintcache
 tsconfig.tsbuildinfo
 
@@ -58,6 +58,7 @@ tsconfig.tsbuildinfo
 /gems/*/node_modules
 /gems/plugins/*
 !/gems/plugins/academic_benchmark/
+!/gems/plugins/analytics/
 !/gems/plugins/account_reports/
 !/gems/plugins/moodle_importer/
 !/gems/plugins/qti_exporter/

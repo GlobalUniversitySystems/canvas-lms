@@ -90,6 +90,10 @@ module Api::V1::User
         json[:pronouns] = user.pronouns
       end
 
+      if user.sno
+        json[:sno] = user.sno
+      end
+
       json[:merged_into_user_id] = user.merged_into_user_id if user.deleted? && user.merged_into_user_id
 
       if user.account.service_enabled?(:avatars)

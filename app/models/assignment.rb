@@ -22,6 +22,16 @@ class Assignment < AbstractAssignment
   validates :parent_assignment_id, :sub_assignment_tag, absence: true
 
   before_save :before_soft_delete, if: -> { will_save_change_to_workflow_state?(to: "deleted") }
+  after_create :set_omit_for_roll_call
+
+  def set_omit_for_roll_call
+    return unless external_tool?
+    return unless external_tool_tag&.url&.include?("rollcall")
+
+    self.omit_from_final_grade = true
+    self.save
+  end
+  private :set_omit_for_roll_call
 
   set_broadcast_policy do |p|
     p.dispatch :assignment_due_date_changed

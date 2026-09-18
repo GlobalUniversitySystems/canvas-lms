@@ -168,6 +168,10 @@ module AccountReports::ReportHelper
   end
 
   def term_name
+    term_id = @account_report.value_for_param("enrollment_term_id")
+
+    return "All Active Terms" if term_id == 'all_active_terms'
+
     if term
       term.name
     else

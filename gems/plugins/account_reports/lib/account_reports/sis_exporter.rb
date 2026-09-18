@@ -110,6 +110,7 @@ module AccountReports
       else # provisioning_report
         headers << "canvas_user_id"
         headers << "user_id"
+        headers << 'sno'
         headers << "integration_id"
         headers << "authentication_provider_id"
         headers << "login_id"
@@ -142,7 +143,7 @@ module AccountReports
           "pseudonyms.id, pseudonyms.sis_user_id, pseudonyms.user_id, pseudonyms.sis_batch_id,
            pseudonyms.integration_id,pseudonyms.authentication_provider_id,pseudonyms.unique_id,
            pseudonyms.workflow_state, users.sortable_name,users.updated_at AS user_updated_at,
-           users.name, users.short_name, users.pronouns AS db_pronouns"
+           users.name, users.short_name, users.sno, users.pronouns AS db_pronouns"
         ).where("NOT EXISTS (SELECT user_id
                              FROM #{Enrollment.quoted_table_name} e
                              WHERE e.type = 'StudentViewEnrollment'
@@ -167,6 +168,7 @@ module AccountReports
       row = []
       row << user.user_id unless @sis_format
       row << user.sis_user_id
+      row << user&.sno unless @sis_format
       row << user.integration_id
       row << user.authentication_provider_id
       row << user.unique_id
@@ -332,6 +334,7 @@ module AccountReports
                      integration_id
                      short_name
                      long_name
+                     term_name
                      account_id
                      term_id
                      status
@@ -345,6 +348,7 @@ module AccountReports
         headers << "integration_id"
         headers << "short_name"
         headers << "long_name"
+        headers << "term_name"
         headers << "canvas_account_id"
         headers << "account_id"
         headers << "canvas_term_id"
@@ -387,6 +391,7 @@ module AccountReports
       row << c.integration_id
       row << c.course_code
       row << c.name
+      row << c&.enrollment_term&.name
       row << c.account_id unless @sis_format
       row << c.account.try(:sis_source_id)
       row << c.enrollment_term_id unless @sis_format

@@ -62,21 +62,33 @@ module AccountReports
       headers << "student name"
       headers << "student id"
       headers << "student sis"
-      headers << "student integration id" if include_integration_id?
-      headers << "course"
+      headers << "student sno"
+      # headers << "student integration id" if include_integration_id?
+      headers << "program"
+      # headers << "course"
       headers << "course id"
       headers << "course sis"
-      headers << "section"
-      headers << "section id"
-      headers << "section sis"
+      headers << "course name"
+      headers << "course code"
+      headers << "course group"
+      headers << "instructor name"
+      # headers << "section"
+      #headers << "section id"
+      #headers << "section sis"
       headers << "term"
-      headers << "term id"
-      headers << "term sis"
+      #headers << "term id"
+      #headers << "term sis"
 
       headers.concat(grading_field_headers)
 
       courses = root_account.all_courses
-      courses = courses.where(enrollment_term_id: term) if term
+      checked_term = @account_report.value_for_param("enrollment_term_id")
+      if checked_term == "all_active_terms"
+        active_terms = root_account.enrollment_terms.active.not_default.started.not_ended.pluck(:id)
+        courses = courses.where(enrollment_term_id: active_terms) if active_terms
+      else
+        courses = courses.where(enrollment_term_id: term) if term
+      end
       courses = add_course_sub_account_scope(courses)
       courses = courses.active unless @include_deleted
       total = courses.count
@@ -103,20 +115,35 @@ module AccountReports
           next unless p
 
           course = courses_by_id[student["course_id"]]
+          teachers = course.teacher_enrollments.map { |te| te.user.name }&.join(', ')
+          begin
+            course_codes = student["course_name"].match(/(\(|\[).+(\)|\])/)&.to_s[1...-1]&.split('-')
+          rescue
+            ErrorReport.create!(user_id: 1, account_id: Account.default.id, comments: "Invalid course name: #{student["course_name"]}", category: 'Grades report')
+
+            course_codes = nil
+          end
+
           arr = []
           arr << student["user_name"]
           arr << student["user_id"]
           arr << p.sis_user_id
-          arr << p.integration_id if include_integration_id?
-          arr << student["course_name"]
+          arr << student["sno"]
+          # arr << p.integration_id if include_integration_id?
+          arr << course_codes[-2]&.match(/^[A-Za-z]+/)&.to_s rescue "program"
+          #arr << student["course_name"]
           arr << student["course_id"]
           arr << student["course_sis_id"]
-          arr << student["section_name"]
-          arr << student["course_section_id"]
-          arr << student["section_sis_id"]
+          arr << student["course_name"].gsub(/(\(|\[).+(\)|\])/, '')&.split(' - ')&.first # course name
+          arr << course_codes[-2] rescue 'course code' # course code
+          arr << course_codes[-1] rescue 'group' # group
+          arr << teachers
+          #arr << student["section_name"]
+          #arr << student["course_section_id"]
+          #arr << student["section_sis_id"]
           arr << student["term_name"]
-          arr << student["term_id"]
-          arr << student["term_sis_id"]
+          #arr << student["term_id"]
+          #arr << student["term_sis_id"]
           arr.concat(grading_field_values(student:, course:))
           add_report_row(row: arr, row_number: i, report_runner: runner)
         end
@@ -271,7 +298,7 @@ module AccountReports
     def student_grade_scope
       students = root_account.enrollments
                              .select("u.name AS user_name, enrollments.user_id, enrollments.course_id,
-                c.name AS course_name,
+                c.name AS course_name, u.sno,
                 enrollments.root_account_id, enrollments.sis_pseudonym_id,
                 c.sis_source_id AS course_sis_id, s.name AS section_name,
                 enrollments.course_section_id, s.sis_source_id AS section_sis_id,
@@ -317,7 +344,7 @@ module AccountReports
     end
 
     def include_override_score?
-      @account.feature_allowed?(:final_grades_override)
+      @account_report&.account&.feature_allowed?(:final_grades_override)
     end
 
     def grading_field_headers
@@ -325,15 +352,15 @@ module AccountReports
 
       headers << "current score"
       headers << "final score"
-      headers << "enrollment state"
-      headers << "unposted current score"
-      headers << "unposted final score"
-      headers << "override score" if include_override_score?
-      headers << "current grade"
-      headers << "final grade"
-      headers << "unposted current grade"
-      headers << "unposted final grade"
-      headers << "override grade" if include_override_score?
+      #headers << "enrollment state"
+      #headers << "unposted current score"
+      #headers << "unposted final score"
+      #headers << "override score" if include_override_score?
+      #headers << "current grade"
+      #headers << "final grade"
+      #headers << "unposted current grade"
+      #headers << "unposted final grade"
+      #headers << "override grade" if include_override_score?
 
       headers
     end
@@ -346,15 +373,15 @@ module AccountReports
       fields << student["final_score"]
       # enroll_state is sandwiched somewhat awkwardly in here but we don't want to change the
       # existing order of these columns
-      fields << student["enroll_state"]
-      fields << student["unposted_current_score"]
-      fields << student["unposted_final_score"]
-      fields << student["override_score"] if include_override_score?
-      fields << course&.score_to_grade(student["current_score"])
-      fields << course&.score_to_grade(student["final_score"])
-      fields << course&.score_to_grade(student["unposted_current_score"])
-      fields << course&.score_to_grade(student["unposted_final_score"])
-      fields << course&.score_to_grade(student["override_score"]) if include_override_score?
+      #fields << student["enroll_state"]
+      #fields << student["unposted_current_score"]
+      #fields << student["unposted_final_score"]
+      #fields << student["override_score"] if include_override_score?
+      #fields << course&.score_to_grade(student["current_score"])
+      #fields << course&.score_to_grade(student["final_score"])
+      #fields << course&.score_to_grade(student["unposted_current_score"])
+      #fields << course&.score_to_grade(student["unposted_final_score"])
+      #fields << course&.score_to_grade(student["override_score"]) if include_override_score?
 
       fields
     end

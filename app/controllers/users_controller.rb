@@ -2122,6 +2122,7 @@ class UsersController < ApplicationController
     managed_attributes.push(:name, :short_name, :sortable_name) if @user.grants_right?(@current_user, :rename)
     managed_attributes << :terms_of_use if @user == (@real_current_user || @current_user)
     managed_attributes << :email if update_email
+    managed_attributes << :sno
 
     # we dropped birthdate from user but this will allow backwards compatability and prevent errors
     user_params.delete("birthdate")
@@ -3142,7 +3143,8 @@ class UsersController < ApplicationController
                             :bio,
                             :terms_of_use,
                             :self_enrollment_code,
-                            :initial_enrollment_type)
+                            :initial_enrollment_type,
+                            :sno)
       if self_enrollment && user_params[:self_enrollment_code]
         user_params[:self_enrollment_code].strip!
       else
