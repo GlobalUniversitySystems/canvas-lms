@@ -59,21 +59,31 @@ module AccountReports
     # - enrollment status
     def grade_export
       headers = []
-      headers << "student name"
-      headers << "student id"
-      headers << "student sis"
-      headers << "student integration id" if include_integration_id?
-      headers << "course"
-      headers << "course id"
-      headers << "course sis"
-      headers << "section"
-      headers << "section id"
-      headers << "section sis"
-      headers << "term"
-      headers << "term id"
-      headers << "term sis"
+      # headers << "student name"
+      # headers << "student id"
+      # headers << "student sis"
+      # headers << "student integration id" if include_integration_id?
+      # headers << "course"
+      # headers << "course id"
+      # headers << "course sis"
+      # headers << "section"
+      # headers << "section id"
+      # headers << "section sis"
+      # headers << "term"
+      # headers << "term id"
+      # headers << "term sis"
+      #
+      # headers.concat(grading_field_headers)
 
-      headers.concat(grading_field_headers)
+      headers << "Program"
+      headers << "Group"
+      headers << "SNO"
+      headers << "Student Name"
+      headers << "Course Code"
+      headers << "Course Name"
+      headers << "Instructor"
+      headers << "current score"
+      headers << "final score"
 
       courses = root_account.all_courses
       courses = courses.where(enrollment_term_id: term) if term
@@ -103,21 +113,39 @@ module AccountReports
           next unless p
 
           course = courses_by_id[student["course_id"]]
+          teachers = course.teacher_enrollments.map { |te| te.user.name }&.join(', ')
+          begin
+            course_codes = student["course_name"].match(/(\(|\[).+(\)|\])/)&.to_s[1...-1]&.split('-')
+          rescue
+            ErrorReport.create!(user_id: 1, account_id: Account.default.id, comments: "Invalid course name: #{student["course_name"]}", category: 'Grades report')
+
+            course_codes = nil
+          end
           arr = []
-          arr << student["user_name"]
-          arr << student["user_id"]
-          arr << p.sis_user_id
-          arr << p.integration_id if include_integration_id?
-          arr << student["course_name"]
-          arr << student["course_id"]
-          arr << student["course_sis_id"]
-          arr << student["section_name"]
-          arr << student["course_section_id"]
-          arr << student["section_sis_id"]
-          arr << student["term_name"]
-          arr << student["term_id"]
-          arr << student["term_sis_id"]
-          arr.concat(grading_field_values(student:, course:))
+          # arr << student["user_name"]
+          # arr << student["user_id"]
+          # arr << p.sis_user_id
+          # arr << p.integration_id if include_integration_id?
+          # arr << student["course_name"]
+          # arr << student["course_id"]
+          # arr << student["course_sis_id"]
+          # arr << student["section_name"]
+          # arr << student["course_section_id"]
+          # arr << student["section_sis_id"]
+          # arr << student["term_name"]
+          # arr << student["term_id"]
+          # arr << student["term_sis_id"]
+          # arr.concat(grading_field_values(student:, course:))
+          arr << Account.find(course.account.account_chain_ids[-2])&.name # Programm (sub-account name)
+          arr << course_codes[-1] rescue 'group' # group
+          arr << student["sno"] # SNO
+          arr << student["user_name"] # student name
+          arr << course_codes[-2] rescue 'course code' # course code
+          arr << student["course_name"] # course name
+          arr << teachers # instructors
+          arr << student["current_score"]
+          arr << student["final_score"]
+
           add_report_row(row: arr, row_number: i, report_runner: runner)
         end
       end
@@ -270,7 +298,7 @@ module AccountReports
 
     def student_grade_scope
       students = root_account.enrollments
-                             .select("u.name AS user_name, enrollments.user_id, enrollments.course_id,
+                             .select("u.name AS user_name, u.sno AS sno, enrollments.user_id, enrollments.course_id,
                 c.name AS course_name,
                 enrollments.root_account_id, enrollments.sis_pseudonym_id,
                 c.sis_source_id AS course_sis_id, s.name AS section_name,

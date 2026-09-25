@@ -60,7 +60,13 @@ $.fn.fillTemplateData = function (options) {
         ) {
           this.data(item, options.data[item].toString())
         }
-        const $found_all = this.find('.' + item)
+        let $found_all
+        try {
+          $found_all = this.find('.' + item)
+        } catch (_e) {
+          // item may contain characters that are invalid in a CSS selector (e.g. "?")
+          continue
+        }
         const avoid = options.avoid || ''
         // eslint-disable-next-line no-loop-func
         $found_all.each(function () {

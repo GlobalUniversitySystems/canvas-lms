@@ -20,7 +20,7 @@
 # NOTE: Indented gems are meant to indicate optional dependencies of parent gems
 
 gem "bootsnap", "~> 1.16", require: false
-gem "rails", "~> 7.1.3"
+gem "rails", "7.1.3.4"
   # can't upgrade to 3.1 until Rails 7.2
   gem "rack", "~> 3.0.11" if $canvas_rails == "7.1"
   # can't upgrade to 2.0 until Rails 7.2
@@ -35,7 +35,7 @@ gem "active_model-better_errors", "1.6.7", require: "active_model/better_errors"
 gem "active_model_serializers", "~> 0.9.9"
 gem "addressable", "~> 2.8", require: false
 gem "authlogic", "~> 6.4"
-  gem "scrypt", "~> 3.0"
+  gem "scrypt", "3.0.8"
 gem "aws-sdk-bedrockruntime", "~> 1.7", require: false
 gem "aws-sdk-kinesis", "~> 1.45", require: false
 gem "aws-sdk-s3", "~> 1.119", require: false

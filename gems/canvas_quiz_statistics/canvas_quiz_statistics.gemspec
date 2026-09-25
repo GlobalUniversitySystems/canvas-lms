@@ -11,7 +11,7 @@ Gem::Specification.new do |spec|
   spec.files         = Dir.glob("lib/**/*") + %w[LICENSE.txt README.md Rakefile]
   spec.require_paths = ["lib"]
 
-  spec.add_dependency "activesupport"
+  spec.add_dependency "activesupport", ">= 3.2", "< 7.2"
   spec.add_dependency "html_text_helper"
 
   spec.add_development_dependency "debug"

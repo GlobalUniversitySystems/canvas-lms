@@ -151,6 +151,7 @@ module Api::V1::Course
       hash["tabs"] = tabs_available_json(course, user, session, ["external"], precalculated_permissions:) if includes.include?("tabs")
       hash["locale"] = course.locale unless course.locale.nil?
       hash["account"] = account_json(course.account, user, session, []) if includes.include?("account")
+      hash["term_name"] = course&.enrollment_term&.name
       # undocumented, but leaving for backwards compatibility.
       hash["subaccount_id"] = course.account.id if includes.include?("subaccount")
       hash["subaccount_name"] = course.account.name if includes.include?("subaccount")

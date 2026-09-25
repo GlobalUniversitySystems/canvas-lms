@@ -12,7 +12,7 @@ Gem::Specification.new do |spec|
   spec.files         = Dir.glob("{lib,spec}/**/*") + %w[test.sh]
   spec.require_paths = ["lib"]
 
-  spec.add_dependency "activesupport", ">= 7.0"
+  spec.add_dependency "activesupport", ">= 7.0", "< 7.2"
   spec.add_dependency "jira_ref_parser", "1.0.1"
   spec.add_dependency "outrigger", "~> 3.0", ">= 3.0.1"
   spec.add_dependency "railties", "~> 7.0"

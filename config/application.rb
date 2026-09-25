@@ -78,7 +78,7 @@ module CanvasRails
     config.time_zone = "UTC"
 
     log_config = Rails.root.join("config/logging.yml").file? && Rails.application.config_for(:logging).with_indifferent_access
-    log_config = { "logger" => "rails", "log_level" => "debug" }.merge(log_config || {})
+    log_config = { "logger" => "rails", "log_level" => "info" }.merge(log_config || {})
 
     config.log_level = log_config["log_level"]
     log_level = Logger.const_get(config.log_level.to_s.upcase)
@@ -443,6 +443,7 @@ module CanvasRails
       app.config.middleware.insert_after(config.session_store, RequestContext::Session)
       app.config.middleware.insert_before(Rack::Head, RequestThrottle)
       app.config.middleware.insert_before(Rack::MethodOverride, PreventNonMultipartParse)
+      app.config.middleware.insert_before(PreventNonMultipartParse, PreventSuccessHeader)
       app.config.middleware.insert_before(Sentry::Rails::CaptureExceptions, SentryTraceScrubber)
     end
   end

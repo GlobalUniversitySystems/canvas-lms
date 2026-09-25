@@ -2185,6 +2185,12 @@ class Course < ActiveRecord::Base
                     )
                     include_final_grade_overrides &= course.allow_final_grade_override?
 
+                    # course = Course.find 153
+                    # enrollments = course.student_enrollments.reload.where(user_id: 57)
+                    # publishing_user = User.find 1
+                    # publishing_pseudonym = publishing_user.pseudonym
+                    # include_final_grade_overrides = false
+
                     course.generate_grade_publishing_csv_output(
                       enrollments,
                       publishing_user,
@@ -2319,16 +2325,16 @@ class Course < ActiveRecord::Base
         enrollment_ids << enrollment.id
 
         if include_final_grade_overrides
-          grade = enrollment.effective_final_grade
-          score = enrollment.effective_final_score
+          grade = enrollment.effective_current_grade
+          score = enrollment.effective_current_score
 
           if custom_gradebook_statuses_enabled
             custom_grade_status_id = enrollment.effective_final_grade_custom_status_id
             custom_grade_status_name = custom_grade_status_map[custom_grade_status_id]
           end
         else
-          grade = enrollment.computed_final_grade
-          score = enrollment.computed_final_score
+          grade = enrollment.computed_current_grade
+          score = enrollment.computed_current_score
         end
 
         sis_pseudonyms =

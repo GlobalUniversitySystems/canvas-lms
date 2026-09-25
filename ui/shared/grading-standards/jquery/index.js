@@ -254,7 +254,7 @@ $(document).ready(() => {
                 $find.find('.grading_standards').append($standard)
               }
               $find
-                .find('.grading_standards_select .grading_standard_select:visible:first a:first')
+                .find('.grading_standards_select .grading_standard_select:not(.blank):first a:first')
                 .click()
             }
             $find.addClass('loaded')
@@ -375,7 +375,7 @@ $(document).ready(() => {
         'assignment[grading_type]': 'letter_grade',
       }
       let url = $('#edit_assignment_form').attr('action')
-      $('input.grading_standard_id, ').val(standard.id)
+      $('input.grading_standard_id').val(standard.id)
       if ($('#update_course_url').length) {
         put_data = {
           'course[grading_standard_id]': standard.id,
