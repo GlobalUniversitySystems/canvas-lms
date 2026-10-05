@@ -229,6 +229,12 @@ class SectionsController < ApplicationController
     end
 
     if authorized_action(@section, @current_user, :update) && authorized_action(@new_course, @current_user, :manage)
+      @section.course.versions.create(
+        event: 'course_section_crosslist',
+        object: @section.attributes.to_yaml,
+        object_changes: {course_section: @section.id, new_course_id: @new_course.id}.to_yaml,
+        whodunnit: @current_user.id
+      ) rescue nil
       @section.crosslist_to_course(@new_course, updating_user: @current_user)
       respond_to do |format|
         flash[:notice] = t("section_crosslisted", "Section successfully cross-listed!")

@@ -507,7 +507,7 @@ class UsersController < ApplicationController
     # trail back to home if you are already home
     clear_crumbs
 
-    @show_footer = true
+    @show_footer = false
 
     if %r{\A/dashboard\z}.match?(request.path)
       return redirect_to(dashboard_url, status: :moved_permanently)
@@ -2226,6 +2226,14 @@ class UsersController < ApplicationController
     @target_user ||= @current_user
     if @source_user.grants_right?(@current_user, :merge) && @target_user.grants_right?(@current_user, :merge)
       UserMerge.from(@source_user).into(@target_user, merger: @current_user, source: "users_controller")
+      @target_user.versions.create(
+        {
+          event: 'user_merge',
+          object: @target_user.attributes.to_yaml,
+          object_changes: {merged_user_id: @source_user.id}.to_yaml,
+          whodunnit: @current_user.id
+        }
+      ) rescue nil
       @target_user.touch
       flash[:notice] = t("user_merge_success", "User merge succeeded! %{first_user} and %{second_user} are now one and the same.", first_user: @target_user.name, second_user: @source_user.name)
       if @target_user == @current_user
