@@ -614,7 +614,19 @@ class Assignment < ActiveRecord::Base
     after_save :create_grades_posted_audit_event!, if: :saved_change_to_grades_published_at
   end
 
+  after_create :set_omit_for_roll_call
+
   has_a_broadcast_policy
+
+  def set_omit_for_roll_call
+    return unless external_tool?
+    return unless external_tool_tag&.url&.include?("rollcall")
+
+    self.omit_from_final_grade = true
+    self.save
+  end
+  private :set_omit_for_roll_call
+
 
   def create_assignment_created_audit_event!
     auditable_changes = AUDITABLE_ATTRIBUTES.each_with_object({}) do |attribute, map|

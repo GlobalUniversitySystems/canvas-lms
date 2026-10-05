@@ -23,15 +23,15 @@ class MoreGranularAdminUsersPermissions < ActiveRecord::Migration[5.2]
   disable_ddl_transaction!
 
   def up
-    DataFixup::AddRoleOverridesForNewPermission.run(:manage_admin_users, :allow_course_admin_actions)
+    # DataFixup::AddRoleOverridesForNewPermission.run(:manage_admin_users, :allow_course_admin_actions)
     DataFixup::AddRoleOverridesForNewPermission.run(:manage_admin_users, :add_teacher_to_course)
-    DataFixup::AddRoleOverridesForNewPermission.run(:manage_admin_users, :add_ta_to_course)
-    DataFixup::AddRoleOverridesForNewPermission.run(:manage_admin_users, :add_observer_to_course)
-    DataFixup::AddRoleOverridesForNewPermission.run(:manage_admin_users, :add_designer_to_course)
+    #  DataFixup::AddRoleOverridesForNewPermission.run(:manage_admin_users, :add_ta_to_course)
+    # DataFixup::AddRoleOverridesForNewPermission.run(:manage_admin_users, :add_observer_to_course)
+    # DataFixup::AddRoleOverridesForNewPermission.run(:manage_admin_users, :add_designer_to_course)
     DataFixup::AddRoleOverridesForNewPermission.run(:manage_admin_users, :remove_teacher_from_course)
-    DataFixup::AddRoleOverridesForNewPermission.run(:manage_admin_users, :remove_ta_from_course)
-    DataFixup::AddRoleOverridesForNewPermission.run(:manage_admin_users, :remove_observer_from_course)
-    DataFixup::AddRoleOverridesForNewPermission.run(:manage_admin_users, :remove_designer_from_course)
+    # DataFixup::AddRoleOverridesForNewPermission.run(:manage_admin_users, :remove_ta_from_course)
+    # DataFixup::AddRoleOverridesForNewPermission.run(:manage_admin_users, :remove_observer_from_course)
+    # DataFixup::AddRoleOverridesForNewPermission.run(:manage_admin_users, :remove_designer_from_course)
   end
 
   def down
