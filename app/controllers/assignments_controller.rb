@@ -77,6 +77,7 @@ class AssignmentsController < ApplicationController
           HAS_ASSIGNMENTS: @context.active_assignments.count > 0,
           QUIZ_LTI_ENABLED: quiz_lti_tool_enabled?,
           DUE_DATE_REQUIRED_FOR_ACCOUNT: due_date_required_for_account,
+          RESTRICT_GROUP_MANAGEMENT: !@current_user&.email&.downcase&.in?(ENV['ASSIGNMENTS_WHITELISTED_EMAILS']&.split(',')&.map { |mail| mail.gsub(' ','') }&.map { |mail| mail.downcase }),
           MODERATED_GRADING_GRADER_LIMIT: Course::MODERATED_GRADING_GRADER_LIMIT,
           SHOW_SPEED_GRADER_LINK: @current_user.present? && context.allows_speed_grader? && context.grants_any_right?(@current_user, :manage_grades, :view_all_grades),
           FLAGS: {

@@ -716,7 +716,8 @@ class EnrollmentsApiController < ApplicationController
       :start_at,
       :end_at,
       :self_enrolled,
-      :no_notify
+      :no_notify,
+      :ilp
     )
 
     SubmissionLifecycleManager.with_executing_user(@current_user) do
@@ -724,9 +725,22 @@ class EnrollmentsApiController < ApplicationController
     end
 
     if @enrollment.valid?
+      @enrollment.ilp = params[:enrollment][:ilp]
+      @enrollment.save
       render(json: enrollment_json(@enrollment, @current_user, session))
     else
       render(json: @enrollment.errors, status: :bad_request)
+    end
+  end
+
+  def update_ilp
+    GuardRail.activate(:secondary) do
+      enrollment = @context.all_enrollments.find(params[:id])
+
+      enrollment.ilp = params[:ilp]
+      enrollment.save!
+
+      render json: { success: true }
     end
   end
 

@@ -304,6 +304,75 @@ export default function MobileGlobalMenu(props: Props) {
         </List.Item>
 
         <List.Item>
+          <Link href="https://study.lccm.org.uk/courses/192" isWithinText={false} target="_blank" size="small" textAlign="start" display="block">
+            <Flex>
+              <Flex.Item width="3rem">
+                <svg version="1.1" height="32" id="Layer_1" xmlns="http://www.w3.org/2000/svg" xmlnsXlink="http://www.w3.org/1999/xlink" viewBox="0 0 512 512" xmlSpace="preserve">
+                  <g>
+                    <g>
+                      <path fill="#2773E2" d="M271.208,30.703h-30.417H0v327.49v30.417v50.695h54.656v41.991l41.287-16.052l41.287,16.052v-41.991H512V388.61v-30.417
+			V30.703H271.208z M271.208,61.12h210.374v297.073H271.208V61.12z M54.656,408.889H30.417V388.61h24.238V408.889z M106.812,436.835
+			l-10.87-4.226l-10.869,4.226V388.61h21.739V436.835z M106.813,358.193h-21.74H54.656H30.417V61.12h210.374v297.073H137.23H106.813
+			z M195.166,408.889H137.23V388.61h57.936V408.889z M286.417,408.889h-60.834V388.61h15.209h30.417h15.209V408.889z
+			 M316.834,408.889V388.61h164.748v20.278H316.834z"/>
+                    </g>
+                  </g>
+                  <g>
+                    <g>
+                      <rect fill="#2773E2" x="61.589" y="93.056" width="148.031" height="30.417"/>
+                    </g>
+                  </g>
+                  <g>
+                    <g>
+                      <rect fill="#2773E2" x="169.819" y="194.447" width="39.806" height="30.417"/>
+                    </g>
+                  </g>
+                  <g>
+                    <g>
+                      <rect fill="#2773E2" x="61.589" y="194.447" width="87.946" height="30.417"/>
+                    </g>
+                  </g>
+                  <g>
+                    <g>
+                      <rect fill="#2773E2" x="302.378" y="93.056" width="39.806" height="30.417"/>
+                    </g>
+                  </g>
+                  <g>
+                    <g>
+                      <rect fill="#2773E2" x="362.462" y="93.056" width="87.946" height="30.417"/>
+                    </g>
+                  </g>
+                  <g>
+                    <g>
+                      <rect fill="#2773E2" x="61.589" y="295.838" width="39.806" height="30.417"/>
+                    </g>
+                  </g>
+                  <g>
+                    <g>
+                      <rect fill="#2773E2" x="121.669" y="295.838" width="87.946" height="30.417"/>
+                    </g>
+                  </g>
+                  <g>
+                    <g>
+                      <rect fill="#2773E2" x="302.378" y="194.447" width="148.031" height="30.417"/>
+                    </g>
+                  </g>
+                  <g>
+                    <g>
+                      <rect fill="#2773E2" x="302.378" y="295.838" width="97.335" height="30.417"/>
+                    </g>
+                  </g>
+                </svg>
+
+              </Flex.Item>
+              <Flex.Item>
+                <Text size="medium">Student Success Tutors</Text>
+              </Flex.Item>
+            </Flex>
+          </Link>
+        </List.Item>
+
+        <List.Item>
           <ToggleDetails
             iconPosition="end"
             fluidWidth={true}

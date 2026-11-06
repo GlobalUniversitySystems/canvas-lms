@@ -22,7 +22,7 @@ module DataFixup
     def self.run(help_link_id)
       help_link_id = help_link_id.to_sym
 
-      Account.root_accounts.active.non_shadow.find_each do |account|
+      Account.root_accounts.active.non_shadowed.find_each do |account|
         next unless account.settings[:custom_help_links]
 
         link_config = account.help_links_builder.default_links(false).find { |hl| hl[:id] == help_link_id }

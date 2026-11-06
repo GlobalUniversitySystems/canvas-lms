@@ -97,7 +97,7 @@ class K5::UserService
     # Global ids of accounts where k5 is enabled (in shards where the user has an association)
     k5_account_ids = []
 
-    Account.shard(@user.in_region_associated_shards).root_accounts.active.non_shadow
+    Account.shard(@user.in_region_associated_shards).root_accounts.active.non_shadowed
            .where("settings LIKE '%k5_accounts:\n- %'").select(:settings).each do |account|
       account.settings[:k5_accounts]&.each do |k5_account_id|
         k5_account_ids << Shard.global_id_for(k5_account_id, account.shard)
@@ -111,7 +111,7 @@ class K5::UserService
     # Global ids of accounts where classic font is selected (in shards where the user has an association)
     classic_font_account_ids = []
 
-    Account.shard(@user.in_region_associated_shards).root_accounts.active.non_shadow
+    Account.shard(@user.in_region_associated_shards).root_accounts.active.non_shadowed
            .where("settings LIKE '%k5_classic_font_accounts:\n- %'").select(:settings).each do |account|
       account.settings[:k5_classic_font_accounts]&.each do |classic_font_account_id|
         classic_font_account_ids << Shard.global_id_for(classic_font_account_id, account.shard)

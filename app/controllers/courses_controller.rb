@@ -2222,7 +2222,7 @@ class CoursesController < ApplicationController
         check_incomplete_registration
 
         unless @context.elementary_subject_course?
-          add_crumb(@context.nickname_for(@current_user, :short_name), url_for(@context), id: "crumb_#{@context.asset_string}")
+          add_crumb(@context.nickname_for(@current_user, :short_name), url_for(@context), id: "crumb_#{@context.asset_string}", title: @context.nickname_for(@current_user, :short_name))
         end
         GuardRail.activate(:primary) do
           set_badge_counts_for(@context, @current_user)
@@ -2285,6 +2285,9 @@ class CoursesController < ApplicationController
               newquizzes_on_quiz_page: @context.root_account.feature_enabled?(:newquizzes_on_quiz_page),
               show_additional_speed_grader_link: Account.site_admin.feature_enabled?(:additional_speedgrader_links),
             }
+          )
+          js_env(
+            RESTRICT_GROUP_MANAGEMENT: !@current_user&.email&.downcase&.in?(ENV['ASSIGNMENTS_WHITELISTED_EMAILS']&.split(',')&.map { |mail| mail.gsub(' ','') }&.map { |mail| mail.downcase })
           )
           js_env(COURSE_HOME: true)
           @upcoming_assignments = get_upcoming_assignments(@context)

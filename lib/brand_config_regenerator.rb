@@ -63,7 +63,7 @@ class BrandConfigRegenerator
       result = []
       # In prod this will take a pretty long time for siteadmin, but we don't expect this to ever be used on siteadmin in prod
       Shard.with_each_shard(target_shards) do
-        root_scope = Account.root_accounts.active.non_shadow.preload(:brand_config)
+        root_scope = Account.root_accounts.active.non_shadowed.preload(:brand_config)
         if Shard.current == @account.shard
           root_scope = root_scope.where.not(id: @account)
         end

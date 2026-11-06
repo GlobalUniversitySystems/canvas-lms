@@ -22,11 +22,11 @@ module DataFixup::MoveFeatureFlagsToSettings
   def self.run(feature_flag_name, context_going_to, setting_name)
     case context_going_to
     when "RootAccount"
-      Account.root_accounts.non_shadow.find_each do |context|
+      Account.root_accounts.non_shadowed.find_each do |context|
         figure_setting_from_override(context, feature_flag_name, setting_name, inherited: false)
       end
     when "AccountAndCourseInherited"
-      Account.root_accounts.non_shadow.find_each do |root_account|
+      Account.root_accounts.non_shadowed.find_each do |root_account|
         Account.suspend_callbacks(:invalidate_caches_if_changed) do
           migrate_ff_overrides_to_inherited_recurse(root_account, feature_flag_name, setting_name)
         end

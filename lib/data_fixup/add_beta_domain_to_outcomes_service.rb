@@ -19,7 +19,7 @@
 
 module DataFixup::AddBetaDomainToOutcomesService
   def self.run
-    Account.root_accounts.active.non_shadow.find_each do |account|
+    Account.root_accounts.active.non_shadowed.find_each do |account|
       domain = account.settings.dig(:provision, "outcomes", :domain)
       next if domain.nil?
 

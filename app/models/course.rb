@@ -32,6 +32,8 @@ class Course < ActiveRecord::Base
   include OutcomeImportContext
   include MaterialChanges
 
+  has_paper_trail versions: { class_name: "PaperTrail::CourseVersion" }
+
   attr_accessor :teacher_names, :master_course, :primary_enrollment_role
   attr_writer :student_count, :teacher_count, :primary_enrollment_type, :primary_enrollment_role_id, :primary_enrollment_rank, :primary_enrollment_state, :primary_enrollment_date, :invitation, :master_migration
 
@@ -297,6 +299,7 @@ class Course < ActiveRecord::Base
   after_create :set_default_post_policy
   after_create :copy_from_course_template
   after_create :set_restrict_quantitative_data_when_needed
+  after_create :create_late_policy_with_deduction
 
   after_update :clear_cached_short_name, if: :saved_change_to_course_code?
   after_update :log_create_to_publish_time, if: :saved_change_to_workflow_state?
@@ -908,41 +911,95 @@ class Course < ActiveRecord::Base
   scope :least_recently_updated, ->(limit) { order(:updated_at).limit(limit) }
 
   scope :manageable_by_user, lambda { |*args|
-    # args[0] should be user_id, args[1], if true, will include completed
-    # enrollments as well as active enrollments
-    user_id = args[0]
-    workflow_states = (args[1].present? ? ["'active'", "'completed'"] : ["'active'"]).join(", ")
-    admin_completed_sql = ""
-    enrollment_completed_sql = ""
+    # args[0] = user_id
+    # args[1] = include completed enrollments and courses
+    user_id = args[0].to_i
+    include_completed = args[1].present?
+    now = Time.current.utc
 
-    if args[1].blank?
-      admin_completed_sql = sanitize_sql(["INNER JOIN #{Course.quoted_table_name} AS courses ON courses.id = caa.course_id
-        INNER JOIN #{EnrollmentTerm.quoted_table_name} AS et ON et.id = courses.enrollment_term_id
-        WHERE courses.workflow_state<>'completed' AND
-          ((et.end_at IS NULL OR et.end_at >= :end) OR
-          (courses.restrict_enrollments_to_course_dates = true AND courses.conclude_at >= :end))",
-                                          end: Time.now.utc])
-      enrollment_completed_sql = sanitize_sql(["INNER JOIN #{EnrollmentTerm.quoted_table_name} AS et ON et.id = courses.enrollment_term_id
-        WHERE courses.workflow_state<>'completed' AND
-          ((et.end_at IS NULL OR et.end_at >= :end) OR
-          (courses.restrict_enrollments_to_course_dates = true AND courses.conclude_at >= :end))",
-                                               end: Time.now.utc])
+    workflow_states =
+      include_completed ? %w[active completed] : %w[active]
+
+    account_access_sql = sanitize_sql_array(
+      [
+        <<~SQL.squish,
+        EXISTS (
+          SELECT 1
+          FROM #{CourseAccountAssociation.quoted_table_name} AS caa
+          INNER JOIN #{Account.quoted_table_name} AS a
+            ON a.id = caa.account_id
+           AND a.workflow_state = 'active'
+          INNER JOIN #{AccountUser.quoted_table_name} AS au
+            ON au.account_id = a.id
+           AND au.workflow_state = 'active'
+          WHERE caa.course_id = courses.id
+            AND au.user_id = ?
+        )
+      SQL
+        user_id
+      ]
+    )
+
+    enrollment_access_sql = sanitize_sql_array(
+      [
+        <<~SQL.squish,
+        EXISTS (
+          SELECT 1
+          FROM #{Enrollment.quoted_table_name} AS e
+          INNER JOIN #{EnrollmentState.quoted_table_name} AS es
+            ON es.enrollment_id = e.id
+          WHERE e.course_id = courses.id
+            AND e.user_id = ?
+            AND e.workflow_state IN (?)
+            AND e.type IN (
+              'TeacherEnrollment',
+              'TaEnrollment',
+              'DesignerEnrollment'
+            )
+            AND es.state IN (?)
+        )
+      SQL
+        user_id,
+        workflow_states,
+        workflow_states
+      ]
+    )
+
+    relation = where(
+      "(#{account_access_sql}) OR (#{enrollment_access_sql})"
+    )
+
+    unless include_completed
+      relation = relation
+                   .joins(
+                     <<~SQL.squish
+          INNER JOIN #{EnrollmentTerm.quoted_table_name}
+            AS manageable_enrollment_terms
+            ON manageable_enrollment_terms.id = courses.enrollment_term_id
+        SQL
+                 )
+                   .where.not(workflow_state: "completed")
+                   .where(
+                     <<~SQL.squish,
+          (
+            manageable_enrollment_terms.end_at IS NULL
+            OR manageable_enrollment_terms.end_at >= :end
+            OR (
+              courses.restrict_enrollments_to_course_dates = TRUE
+              AND courses.conclude_at >= :end
+            )
+          )
+        SQL
+                     end: now
+                   )
     end
 
-    distinct.joins("INNER JOIN (
-         SELECT caa.course_id, au.user_id FROM #{CourseAccountAssociation.quoted_table_name} AS caa
-         INNER JOIN #{Account.quoted_table_name} AS a ON a.id = caa.account_id AND a.workflow_state = 'active'
-         INNER JOIN #{AccountUser.quoted_table_name} AS au ON au.account_id = a.id AND au.user_id = #{user_id.to_i} AND au.workflow_state = 'active'
-         #{admin_completed_sql}
-       UNION SELECT courses.id AS course_id, e.user_id FROM #{Course.quoted_table_name}
-         INNER JOIN #{Enrollment.quoted_table_name} AS e ON e.course_id = courses.id AND e.user_id = #{user_id.to_i}
-           AND e.workflow_state IN(#{workflow_states}) AND e.type IN ('TeacherEnrollment', 'TaEnrollment', 'DesignerEnrollment')
-         INNER JOIN #{EnrollmentState.quoted_table_name} AS es ON es.enrollment_id = e.id AND es.state IN (#{workflow_states})
-         #{enrollment_completed_sql}) AS course_users
-       ON course_users.course_id = courses.id")
+    relation
   }
 
-  scope :not_deleted, -> { where("workflow_state<>'deleted'") }
+  scope :not_deleted, -> {
+    where.not(courses: { workflow_state: "deleted" })
+  }
 
   scope :with_enrollments, lambda {
     where(Enrollment.active.where("enrollments.course_id=courses.id").arel.exists)
@@ -4437,6 +4494,14 @@ class Course < ActiveRecord::Base
     return if default_post_policy.present?
 
     create_default_post_policy(assignment: nil, post_manually: false)
+  end
+
+  def create_late_policy_with_deduction
+    LatePolicy.create(
+      course: self,
+      missing_submission_deduction_enabled: true,
+      missing_submission_deduction: 100
+    )
   end
 
   def canvas_k6_tab_configuration

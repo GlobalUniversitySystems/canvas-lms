@@ -20,8 +20,9 @@
 # NOTE: Indented gems are meant to indicate optional dependencies of parent gems
 
 gem "bootsnap", "~> 1.16", require: false
-gem "rails", "~> 7.0.4"
+gem "rails", "7.0.8.7"
 gem "switchman", "~> 3.5"
+gem "concurrent-ruby", "1.3.4"
 gem "guardrail", "~> 3.0"
 gem "switchman-inst-jobs", "~> 4.0"
 gem "irb", "~> 1.7"
@@ -36,6 +37,7 @@ gem "aws-sdk-kinesis", "~> 1.45", require: false
 gem "aws-sdk-s3", "~> 1.119", require: false
 gem "aws-sdk-sns", "~> 1.60", require: false
 gem "aws-sdk-sqs", "~> 1.53", require: false
+gem 'paper_trail'
 gem "rqrcode", "~> 2.2", require: false
 gem "bcrypt", "~> 3.1"
 gem "bigdecimal", "~> 3.1"
@@ -50,16 +52,20 @@ gem "ddtrace", "~> 1.13", require: false
 gem "docx", "~> 0.8"
 gem "encrypted_cookie_store-instructure", "~> 1.2", require: "encrypted_cookie_store"
 gem "gepub", "1.0.15"
-gem "apollo-federation", "~> 3.8"
+gem "apollo-federation", "~> 3.8.4"
 gem "graphql", "~> 1.12.7"
 gem "graphql-batch", "~> 0.5"
 gem "highline", "~> 2.0", require: false
 gem "httparty", "~> 0.21"
 gem "i18nliner", "~> 0.2.4"
+gem "i18n", "< 1.15" # 1.15+ uses Fiber[:key] storage which requires Ruby 3.2+
 gem "icalendar", "~> 2.9", require: false
 gem "diplomat", "~> 2.6", require: false
 gem "ims-lti", "~> 2.3", require: "ims"
 gem "rrule", "~> 0.5", require: false
+gem "pact-support", "1.21.4"
+gem "json", "2.12.2"
+gem "amazing_print", "1.8.1"
 
 gem "inst_access", "~> 0.4"
 gem "inst_statsd", "~> 3.0"

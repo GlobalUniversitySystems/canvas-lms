@@ -21,7 +21,7 @@ class BackfillPronounSettings < ActiveRecord::Migration[5.2]
   tag :predeploy
 
   def up
-    Account.root_accounts.non_shadow.active.find_each do |account|
+    Account.root_accounts.non_shadowed.active.find_each do |account|
       if account[:users_can_edit_name] == false && account.can_add_pronouns?
         account[:can_change_pronouns] = false
         account.save!
@@ -30,7 +30,7 @@ class BackfillPronounSettings < ActiveRecord::Migration[5.2]
   end
 
   def down
-    Account.root_accounts.non_shadow.active.find_each do |account|
+    Account.root_accounts.non_shadowed.active.find_each do |account|
       account.settings.delete(:can_change_pronouns)
       account.save! if account.settings_changed?
     end

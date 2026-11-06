@@ -59,6 +59,12 @@ module Lti
         # * have resource links associated with them
         # * not reload the page
         unless create_resources_from_content_items?
+          if lti_resource_links.all? { |item| item[:url] == "https://api.turnitinuk.com/api/lti/1p3/launch" }
+            lti_resource_links.each { |item| create_update_assignment!(item) }
+            render_content_items(reload_page: true)
+            return
+          end
+
           lti_resource_links.each do |content_item|
             resource_link = Lti::ResourceLink.create_with(context, tool, content_item[:custom], content_item[:url])
             content_item[:lookup_uuid] = resource_link&.lookup_uuid

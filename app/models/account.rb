@@ -1835,7 +1835,7 @@ class Account < ActiveRecord::Base
   end
 
   def self.update_all_update_account_associations
-    Account.root_accounts.active.non_shadow.find_in_batches(strategy: :pluck_ids) do |account_batch|
+    Account.root_accounts.active.non_shadowed.find_in_batches(strategy: :pluck_ids) do |account_batch|
       account_batch.each(&:update_account_associations)
     end
   end

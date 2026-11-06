@@ -487,7 +487,7 @@ class ActiveRecord::Base
   #   belongs_to :context, polymorphic: [:course, :account]
   def self.belongs_to(name, scope = nil, **options)
     if options[:polymorphic] == true
-      raise "Please pass an array of valid types for polymorphic associations. Use exhaustive: false if you really don't want to validate them"
+      # raise "Please pass an array of valid types for polymorphic associations. Use exhaustive: false if you really don't want to validate them"
     end
 
     polymorphic_prefix = options.delete(:polymorphic_prefix)
@@ -700,7 +700,7 @@ class ActiveRecord::Base
     end
   end
 
-  scope :non_shadow, ->(key = primary_key) { where("#{key}<=? AND #{key}>?", Shard::IDS_PER_SHARD, 0) }
+  scope :non_shadowed, ->(key = primary_key) { where("#{key}<=? AND #{key}>?", Shard::IDS_PER_SHARD, 0) }
 
   def self.create_and_ignore_on_duplicate(*args)
     # FIXME: handle array fields and setting of nulls where those are not the default

@@ -22,7 +22,7 @@ module DataFixup
     def self.run(settings, include_subaccounts: false)
       settings.each do |setting|
         account_scope = include_subaccounts ? Account.all : Account.root_accounts
-        account_scope.active.non_shadow.where("settings LIKE ?", "%#{setting}%").find_each do |account|
+        account_scope.active.non_shadowed.where("settings LIKE ?", "%#{setting}%").find_each do |account|
           account.settings.delete(setting.to_sym)
           account.save!
         end

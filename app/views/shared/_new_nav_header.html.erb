@@ -210,6 +210,16 @@
       <% unless @current_user.nil? %>
         <%= render(partial: 'external_tools/global_nav_menu_items') %>
       <% end %>
+      <li class="menu-item ic-app-header__menu-list-item">
+        <a id="global_nav_conversations_link" target="_blank" data-tooltip="right" title="Resources to help you study and learn" href="https://study.lccm.org.uk/courses/192" class="ic-app-header__menu-list-link">
+          <div class="menu-item-icon-container">
+            <%= render(partial: "shared/svg/#{'k12/' if k12?}svg_icon_resource", formats: [:svg]) %>
+          </div>
+          <div class="menu-item__text">
+            Student Success Tutors
+          </div>
+        </a>
+      </li>
       <li class="ic-app-header__menu-list-item">
         <%= link_to help_link_url,
                     :id => 'global_nav_help_link',

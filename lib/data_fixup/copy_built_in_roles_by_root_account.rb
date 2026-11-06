@@ -19,7 +19,7 @@
 
 module DataFixup::CopyBuiltInRolesByRootAccount
   def self.run
-    root_account_ids = Account.root_accounts.non_shadow.pluck(:id).sort
+    root_account_ids = Account.root_accounts.non_shadowed.pluck(:id).sort
     if root_account_ids.count == 1
       # easy-mode: just update the old built in roles to the one root account
       Role.where(workflow_state: "built_in", root_account_id: nil).update_all(root_account_id: root_account_ids.first)

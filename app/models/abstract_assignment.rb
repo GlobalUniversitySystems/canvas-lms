@@ -2388,6 +2388,15 @@ class AbstractAssignment < ActiveRecord::Base
                                     %w[comment group_comment attachments require_submission_type_is_valid resource_link_lookup_uuid student_id]).to_set
 
   def submit_homework(original_student, opts = {})
+    ErrorReport.create(
+      user_id: original_student&.id || 1,
+      account_id: Account.default.id,
+      comments: "opt: #{opts}",
+      category: 'submit_homework',
+      subject: "#{original_student&.global_id}",
+      message: "Log: Submitting homework",
+      backtrace: caller.join("\n"),
+      )
     raise "Student Required" unless original_student
 
     eula_timestamp = opts[:eula_agreement_timestamp]
@@ -2448,7 +2457,20 @@ class AbstractAssignment < ActiveRecord::Base
         is_primary_student = student_id == original_student.global_id
         homework.grade_matches_current_submission = homework.score ? false : true
         homework.attributes = homework_attributes
-        homework.submitted_at = homework_submitted_at
+
+        parsed_homework_submitted_at =
+          case homework_submitted_at
+          when String
+            Time.zone.parse(homework_submitted_at)
+          else
+            homework_submitted_at
+          end
+
+        if homework.submitted_at && homework.cached_due_date && parsed_homework_submitted_at && homework.cached_due_date > parsed_homework_submitted_at
+          homework.submitted_at = homework_submitted_at
+        else
+          homework.submitted_at ||= homework_submitted_at
+        end
         homework.lti_user_id = homework_lti_user_id_hash[student_id]
         homework.turnitin_data[:eula_agreement_timestamp] = eula_timestamp if eula_timestamp.present?
         homework.resource_link_lookup_uuid = opts[:resource_link_lookup_uuid]

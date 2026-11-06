@@ -340,10 +340,28 @@ class MasterCourses::MasterTemplatesController < ApplicationController
         end
 
         valid_ids_to_add -= template_pairs.map(&:last) # ignore existing active subscriptions
+
+        @course.versions.create(
+          {
+            event: 'update_associations_add',
+            object: @course.to_yaml,
+            object_changes: {ids_to_add: ids_to_add}.to_yaml,
+            whodunnit: @current_user&.id
+          }
+        ) rescue nil
+
         valid_ids_to_add.each { |course_id| @template.add_child_course!(course_id) }
       end
 
       if ids_to_remove.any?
+        @course.versions.create(
+          {
+            event: 'update_associations_remove',
+            object: @course.to_yaml,
+            object_changes: {ids_to_remove: ids_to_remove}.to_yaml,
+            whodunnit: @current_user&.id
+          }
+        ) rescue nil
         @template.child_subscriptions.active.where(child_course_id: ids_to_remove).preload(:child_course).each(&:destroy)
       end
 

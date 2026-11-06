@@ -3,6 +3,7 @@
 .git
 .gitignore
 .idea
+Gemfile.*.plugins.lock
 
 build/
 !build/vendor/woff-code-latest.zip

@@ -137,14 +137,14 @@
       <tr class="sis_user_id" data-external-placeholder="sis-user-id" data-label="<%= before_label('sis_id', 'SIS ID') %>" />
       <tr class="integration_id" data-external-placeholder="integration-id" data-label="<%= before_label('integration_id', 'Integration ID') %>" />
       <% if can_do(Account.site_admin, @current_user, :manage_user_logins) %>
-        <% js_env :PASSWORD_POLICIES => Hash[Account.root_accounts.active.non_shadow.map{ |a| [a.id, a.password_policy]}] %>
+        <% js_env :PASSWORD_POLICIES => Hash[Account.root_accounts.active.non_shadowed.map{ |a| [a.id, a.password_policy]}] %>
         <tr class="account_id">
           <td><%= f.blabel :account_id, :en => "Account" %></td>
           <td>
             <%
               accounts = Account.root_accounts
                 .active
-                .non_shadow
+                .non_shadowed
                 .map { |a| [(a.name || t("Unnamed Account (%{id})", id: a.id)), a.id] }
                 .sort_by(&:first)
             %>

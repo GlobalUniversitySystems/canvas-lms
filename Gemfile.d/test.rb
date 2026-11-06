@@ -49,7 +49,7 @@ group :test do
   gem "database_cleaner", "~> 2.0"
   gem "json-schema", "~> 4.0"
 
-  gem "rspecq", github: "instructure/rspecq"
+  gem "rspecq", github: "kavalenka/rspecq", ref: "c392e5eb1fafdb8f275ad28aa50db7951911d483"
   gem "flakey_spec_catcher", "~> 0.12", require: false
   gem "factory_bot", "~> 6.3", require: false
   gem "stormbreaker", "~> 1.0", require: false
