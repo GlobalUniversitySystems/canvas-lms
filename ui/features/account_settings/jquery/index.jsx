@@ -165,6 +165,60 @@ $(document).ready(function () {
 
   globalAnnouncements.bindDomEvents()
 
+  let adminsTabLoaded = false
+
+  function loadAdminsTab(targetId) {
+    if (targetId !== 'tab-users-selected') return
+    if (adminsTabLoaded) return
+
+    const splitContext = window.ENV.context_asset_string.split('_')
+    const path = `/${splitContext[0]}s/${splitContext[1]}/admins_tab`
+
+    fetch(path, {
+      headers: {accept: 'text/html'},
+    })
+      .then(req => req.text())
+      .then(html => {
+        try {
+          $('#tab-users-mount').html(html)
+          bindAdminsTabEvents()
+          // Re-initialize the user_lists module on the newly injected DOM elements.
+          // The user_lists JS bundle is loaded with the page but its ready() callback
+          // fired before the admins tab HTML was present, so we re-init here.
+          if (window.INST?.UserLists?.init) {
+            window.INST.UserLists.init()
+          }
+          adminsTabLoaded = true
+        } catch {
+          $('#tab-users-mount').text(I18n.t('Failed to load admins.'))
+        }
+      })
+      .catch(() => {
+        $('#tab-users-mount').text(I18n.t('Failed to load admins.'))
+      })
+  }
+
+  function bindAdminsTabEvents() {
+    $('.remove_account_user_link').click(function (event) {
+      event.preventDefault()
+      const $item = $(this).parent('li')
+      $item.confirmDelete({
+        message: I18n.t(
+          'confirms.remove_account_admin',
+          'Are you sure you want to remove this account admin?',
+        ),
+        url: $(this).data('href'),
+        success() {
+          $item.slideUp(function () {
+            $(this).remove()
+          })
+        },
+      })
+    })
+
+    $('.add_users_link').click(addUsersLink)
+  }
+
   function loadReportsTab(targetId) {
     if (targetId !== 'tab-reports-selected') return
 
@@ -291,6 +345,7 @@ $(document).ready(function () {
       })
   }
 
+  LoadTab(loadAdminsTab)
   LoadTab(loadReportsTab)
   LoadTab(loadSecurityTab)
 
@@ -346,22 +401,6 @@ $(document).ready(function () {
     })
   })
 
-  $('.remove_account_user_link').click(function (event) {
-    event.preventDefault()
-    const $item = $(this).parent('li')
-    $item.confirmDelete({
-      message: I18n.t(
-        'confirms.remove_account_admin',
-        'Are you sure you want to remove this account admin?',
-      ),
-      url: $(this).data('href'),
-      success() {
-        $item.slideUp(function () {
-          $(this).remove()
-        })
-      },
-    })
-  })
 
   $(
     '#enable_equella, ' +
@@ -445,8 +484,6 @@ $(document).ready(function () {
     )
   })
 
-  // Admins tab
-  $('.add_users_link').click(addUsersLink)
 
   $('.service_help_dialog').each(function (_index) {
     const serviceName = $(this).attr('id').replace('_help_dialog', '')

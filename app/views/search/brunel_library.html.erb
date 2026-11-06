@@ -1,0 +1,133 @@
+<style>
+  .tabs {
+    margin: 0;
+    list-style-type: none;
+  }
+
+  .tabs::before, .tabs::after {
+    content: ' ';
+    display: table;
+  }
+
+  .tabs::after {
+    clear: both;
+  }
+
+  .tabs.vertical > li {
+    width: auto;
+    float: none;
+    display: block;
+  }
+
+  .tabs.simple > li > a {
+    padding: 0;
+  }
+
+  .tabs.simple > li > a:hover {
+    background: transparent;
+  }
+
+  .tabs-title {
+    float: left;
+    background: #007d7a;
+    border: 0.5px solid #e6e6e6;
+  }
+
+  .tabs-title > a {
+    display: block;
+    padding: 1.25rem 1.5rem;
+    line-height: 1;
+    font-size: 15px;
+    color: white;
+    font-weight: bold;
+    text-decoration: none;
+  }
+
+  .tabs-title > a:hover {
+    background: #00a3a0;
+  }
+
+  .tabs-content {
+    background: #fefefe;
+    -webkit-transition: all 0.5s ease;
+    transition: all 0.5s ease;
+    border-top: 0;
+  }
+
+  .tabs-content.vertical {
+    border: 1px solid #e6e6e6;
+    border-left: 0;
+  }
+
+  .tabs-panel {
+    display: none;
+    padding: 1rem;
+    width: 50%;
+  }
+
+  .tabs-panel.is-active {
+    display: block;
+  }
+
+  .is-active-title {
+    background: #004946;
+  }
+</style>
+
+
+<div class="row" style="margin:20px;">
+  <h1 style="font-weight: bold; margin-bottom: 10px">Brunel Library Online: Library Search</h1>
+  <ul id="tabbed-content" class="tabs" data-tabs="data-tabs">
+    <li class="tabs-title tab-1 is-active-title" runat="server">
+      <a id="1" href="panel1">Search all</a>
+    </li>
+    <li class="tabs-title tab-2" runat="server">
+      <a id="2" href="panel2">Books</a>
+    </li>
+    <li class="tabs-title tab-3" runat="server">
+      <a id="3" href="panel3">Articles</a>
+    </li>
+    <li class="tabs-title tab-4" runat="server">
+      <a id="4" href="panel4">Journals</a>
+    </li>
+  </ul>
+  <div class="tabs-content" data-tabs-content="tabbed-content">
+    <div class="tabs-panel  is-active" id="panel1" runat="server">
+      <iframe style="width: 100%; border: 0; padding-bottom: 10px; height: 11rem;" src="https://www.brunel.ac.uk/life/library/inlcude/html-snippets/Discovery-Search.htm"></iframe>
+    </div>
+    <div class="tabs-panel" id="panel2" runat="server">
+      <iframe style="width: 100%; border: 0; padding-bottom: 10px; height: 10rem;" src="https://www.brunel.ac.uk/life/library/inlcude/html-snippets/Catalogue-Search.htm"></iframe>
+    </div>
+    <div class="tabs-panel" id="panel3" runat="server">
+      <iframe style="width: 100%; border: 0; padding-bottom: 10px; height: 12rem;" src="https://www.brunel.ac.uk/life/library/inlcude/html-snippets/Article-Search.htm"></iframe>
+    </div>
+    <div class="tabs-panel" id="panel4" runat="server">
+      <iframe style="width: 100%; border: 0; padding-bottom: 10px; height: 31rem;" src="https://www.brunel.ac.uk/life/library/inlcude/html-snippets/Journal-Search.htm"></iframe>
+    </div>
+  </div>
+</div>
+
+<script>
+  document.addEventListener('DOMContentLoaded', function() {
+    var tabLinks = document.querySelectorAll('.tabs-title a');
+    var tabContainers = document.querySelectorAll('.tabs-panel');
+
+    for (var i = 0; i < tabLinks.length; i++) {
+      tabLinks[i].addEventListener('click', function(e) {
+        e.preventDefault();
+        var el = e.target;
+        var containerId = el.getAttribute('href');
+
+        for(var l = 0; l < tabLinks.length; l++)
+
+        { tabLinks[l].parentNode.className = 'tabs-title' }
+        el.parentNode.className = 'tabs-title is-active-title'
+
+        for (var k = 0; k < tabContainers.length; k++)
+
+        { tabContainers[k].className = 'tabs-panel' }
+        document.getElementById(containerId).className = 'tabs-panel is-active'
+      })
+    }
+  }, false);
+</script>

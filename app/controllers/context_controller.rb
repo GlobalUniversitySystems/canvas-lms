@@ -163,7 +163,7 @@ class ContextController < ApplicationController
     end
 
     # Render upgraded People page if feature flag is enabled
-    if @domain_root_account.feature_enabled?(:react_people_page)
+    if false # @domain_root_account.feature_enabled?(:react_people_page)
       add_crumb t("People")
       js_bundle :course_people
       render html: "", layout: true

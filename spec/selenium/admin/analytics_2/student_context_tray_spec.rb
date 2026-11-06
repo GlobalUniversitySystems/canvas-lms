@@ -53,6 +53,7 @@ describe "analytics in Canvas" do
       context "with A2 FF enabled" do
         before do
           @course.root_account.enable_feature!(:analytics_2)
+          @course.root_account.enable_feature!(:hide_legacy_course_analytics)
           user_session(@teacher)
 
           visit_course_people_page(@course.id)
@@ -68,6 +69,7 @@ describe "analytics in Canvas" do
       context "with A2 FF disabled" do
         before do
           @course.root_account.disable_feature!(:analytics_2)
+          @course.root_account.disable_feature!(:hide_legacy_course_analytics)
           user_session(@teacher)
 
           visit_course_people_page(@course.id)
@@ -75,8 +77,8 @@ describe "analytics in Canvas" do
           wait_for_student_tray
         end
 
-        it "does not displays Analytics 1 button on Student Tray" do
-          expect(student_tray_quick_links.text).not_to include("Analytics")
+        it "displays Analytics 1 button on Student Tray" do
+          expect(student_tray_quick_links.text).to include("Analytics")
           expect(student_tray_quick_links.text).not_to include("Admin Analytics")
         end
       end

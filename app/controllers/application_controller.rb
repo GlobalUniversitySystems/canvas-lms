@@ -475,6 +475,7 @@ class ApplicationController < ActionController::Base
     feature_flag_ui_sorting
     files_a11y_rewrite
     files_a11y_rewrite_toggle
+    hide_legacy_course_analytics
     horizon_course_setting
     instui_for_import_page
     instui_header
@@ -1851,7 +1852,7 @@ class ApplicationController < ActionController::Base
     # We only record page_views for html page requests coming from within the
     # app, or if coming from a developer api request and specified as a
     # page_view.
-    return unless @current_user && !request.xhr? && request.get? && page_views_enabled?
+    return unless @current_user && !request.xhr? && !api_request? && request.get? && page_views_enabled?
 
     ENV["RAILS_HOST_WITH_PORT"] ||= request.host_with_port
     generate_page_view

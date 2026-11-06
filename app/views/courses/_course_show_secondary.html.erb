@@ -93,6 +93,13 @@
       </a>
       <% end %>
 
+      <%# if @current_user.roles(@domain_root_account).any? { |role| role == "admin" || role == "teacher" } %>
+<!--        <a class="btn button-sidebar-wide" href="/courses/<%#= @context.id %>/analytics">-->
+<!--          <i class="icon-stats"></i>-->
+<!--          View Course Analytics-->
+<!--        </a>-->
+      <%# end %>
+
       <% course_custom_links.each do |link| %>
       <a class="btn button-sidebar-wide" href="<%= link[:url] %>"><i class="<%= link[:icon_class] %>" role="presentation"></i> <%= link[:text] %></a>
       <% end %>

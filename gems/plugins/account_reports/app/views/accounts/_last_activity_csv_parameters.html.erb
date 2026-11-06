@@ -1,0 +1,15 @@
+<table>
+  <%= render partial: 'date_picker_parameter',
+             locals: {start_at_option: true,
+                      end_at_option: true} %>
+  <tr>
+    <td>Program name
+      <select name="parameters[program_name]">
+        <option value="Health" <%= 'selected' %>>Health</option>
+        <option value="Psychology">Psychology</option>
+        <option value="Engineering">Engineering</option>
+      </select>
+    </td>
+  </tr>
+
+</table>

@@ -206,4 +206,7 @@ class SearchController < ApplicationController
       render html: @contentHTML
     end
   end
+
+  def brunel_library
+  end
 end

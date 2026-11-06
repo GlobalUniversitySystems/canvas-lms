@@ -339,6 +339,24 @@ module AccountReports
               }
             }
           },
+          'last_activity_csv' => {
+            :title => proc { I18n.t('Last activity report') },
+            :parameters_partial => true,
+            :parameters => {
+              :start_at => {
+                :required => true,
+                :description => 'The beginning date'
+              },
+              :end_at => {
+                :required => true,
+                :description => 'The end date'
+              },
+              :program_name => {
+                :required => true,
+                :description => 'Program name'
+              }
+            }
+          },
           "zero_activity_csv" => {
             title: proc { I18n.t(:zero_activity_title, "Zero Activity") },
             description_partial: true,

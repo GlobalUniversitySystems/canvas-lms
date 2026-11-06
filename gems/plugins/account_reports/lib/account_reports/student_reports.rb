@@ -157,6 +157,50 @@ module AccountReports
       end
     end
 
+    def last_activity
+      headers = []
+      headers << 'programm_name'
+      headers << 'module_info'
+      headers << 'sis_user_id'
+      headers << 'student_first_name'
+      headers << 'student_last_name'
+      headers << 'last_activity'
+      headers << 'minutes_spent'
+
+      programms = [@account_report.value_for_param("program_name")]
+
+      write_report headers do |csv|
+        programms.each do |programm_name|
+          Account.where(name: programm_name).each do |account|
+            account.courses.each do |course|
+              module_name = course.name
+              course
+                .enrollments
+                .where(type: 'StudentEnrollment')
+                .where('last_activity_at >= ? and last_activity_at <= ?', start_at, end_at).each do |enrollment|
+
+                user = enrollment.user
+                student_id = user&.pseudonym&.sis_user_id
+                last_activity_at = enrollment.last_activity_at
+
+                row = []
+
+                row << programm_name
+                row << module_name
+                row << student_id
+                row << user&.first_name
+                row << user&.last_name
+                row << last_activity_at
+                row << enrollment.total_activity_time / 60.0 rescue ''
+
+                csv << row
+              end
+            end
+          end
+        end
+      end
+    end
+
     def zero_activity
       report_extra_text
 

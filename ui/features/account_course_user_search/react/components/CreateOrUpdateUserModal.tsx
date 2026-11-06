@@ -139,7 +139,7 @@ export default function CreateOrUpdateUserModal(props: Props) {
         }
       : {},
   )
-  const [pseudonymFields, setPseudonymFields] = useState<Pseudonym>({send_confirmation: true})
+  const [pseudonymFields, setPseudonymFields] = useState<Pseudonym>({send_confirmation: false})
   const [errors, setErrors] = useState<Record<FieldTypes, string | undefined>>(defaultErrors)
   const [isLoading, setIsLoading] = useState(false)
 
@@ -165,7 +165,7 @@ export default function CreateOrUpdateUserModal(props: Props) {
           }
         : {},
     )
-    setPseudonymFields({send_confirmation: true})
+    setPseudonymFields({send_confirmation: false})
     setErrors(defaultErrors)
   }
 

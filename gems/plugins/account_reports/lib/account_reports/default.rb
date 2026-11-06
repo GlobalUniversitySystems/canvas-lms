@@ -91,6 +91,10 @@ module AccountReports
       StudentReports.new(account_report).students_with_no_submissions
     end
 
+    def self.last_activity_csv(account_report)
+      StudentReports.new(account_report).last_activity
+    end
+
     def self.zero_activity_csv(account_report)
       StudentReports.new(account_report).zero_activity
     end

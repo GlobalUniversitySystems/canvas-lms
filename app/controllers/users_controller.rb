@@ -463,7 +463,7 @@ class UsersController < ApplicationController
     # trail back to home if you are already home
     clear_crumbs
 
-    @show_footer = true
+    @show_footer = false
 
     if %r{\A/dashboard\z}.match?(request.path)
       return redirect_to(dashboard_url, status: :moved_permanently)
