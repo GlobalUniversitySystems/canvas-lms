@@ -17,6 +17,12 @@
         >
           <i class="icon-mini-arrow-down"></i>
           {{name}}
+          {{#if isModuleCategory}}
+            {{#if componentType.length}}
+                <br/>
+                {{componentType}}
+            {{/if}}
+          {{/if}}
         </button>
         {{#if hasIntegrationData}}
           <i class="icon-sis-imported" aria-hidden="true" title='{{#t}}Imported from {{postToSISName}}{{/t}}'></i>
@@ -34,6 +40,12 @@
         >
           <i class="icon-mini-arrow-down" aria-hidden="true"></i>
           {{name}}
+          {{#if isModuleCategory}}
+            {{#if componentType.length}}
+                <br/>
+                {{componentType}}
+            {{/if}}
+          {{/if}}
         </button>
         {{#if hasIntegrationData}}
           <i class="icon-sis-imported" aria-hidden="true" title='{{#t}}Imported from {{postToSISName}}{{/t}}'></i>
@@ -43,39 +55,65 @@
     {{/if}}
 
     <div class="ag-header-controls">
-      {{#ifAny showWeight showRules}}
-        <ul class="pill">
-          {{#if showWeight}}
-            <li>{{#t}}{{n groupWeight percentage=true}} of Total{{/t}}</li>
-          {{/if}}
-          {{#if showRules}}
-            <li>
-              <a
-                href='#'
-                title='{{#toSentence displayableRules}}{{this}}{{/toSentence}}'
-                class="tooltip_link"
-                data-tooltip-selector="#ag_{{id}}_rules_tooltip"
-              >{{rulesText}}<i class="icon-mini-arrow-down"></i></a>
-              <div id="ag_{{id}}_rules_tooltip" style="display:none;">
-                {{#each displayableRules}}
-                  <span>{{this}}</span><br/>
-                {{/each}}
-              </div>
-            </li>
-          {{/if}}
-        </ul>
-      {{/ifAny}}
+      {{#unless isModuleCategory}}
+        {{#ifAny showWeight showRules}}
+          <ul class="pill">
+            {{#if showWeight}}
+              <li>{{#t}}{{n groupWeight percentage=true}} of Total{{/t}}</li>
+            {{/if}}
+            {{#if showRules}}
+              <li>
+                <a
+                  href='#'
+                  title='{{#toSentence displayableRules}}{{this}}{{/toSentence}}'
+                  class="tooltip_link"
+                  data-tooltip-selector="#ag_{{id}}_rules_tooltip"
+                >{{rulesText}}<i class="icon-mini-arrow-down"></i></a>
+                <div id="ag_{{id}}_rules_tooltip" style="display:none;">
+                  {{#each displayableRules}}
+                    <span>{{this}}</span><br/>
+                  {{/each}}
+                </div>
+              </li>
+            {{/if}}
+          </ul>
+        {{/ifAny}}
+      {{/unless}}
 
       {{#if ENV.PERMISSIONS.manage_assignments_add}}
-        <a
-          href="#"
-          class="add_assignment Button--icon-action"
-          title='{{#t}}Add Assignment to {{name}}{{/t}}'
-        >
-          {{! icon is separate from <a> tag because it is the only visible content in the button }}
-          <span class="screenreader-only">{{#t}}Add Assignment to {{name}}{{/t}}</span>
-          <i class="icon-plus"></i>
-        </a>
+        {{#if addAssignmentLocked}}
+          <a
+            href="#"
+            class="add_assignment Button--icon-action hidden disabled"
+            aria-disabled="true"
+            title='{{#t}}This assignment group has reached its assignment limit{{/t}}'
+          >
+            {{! icon is separate from <a> tag because it is the only visible content in the button }}
+            <span class="screenreader-only">{{#t}}This assignment group has reached its assignment limit{{/t}}</span>
+            <i class="icon-plus"></i>
+          </a>
+        {{else}}
+          <a
+            href="#"
+            class="add_assignment Button--icon-action"
+            style="border: 1px solid #c7cdd1; margin-left: 2px; margin-right: 2px; border-radius: 3px;"
+            title='{{#t}}Add Assignment to {{name}}{{/t}}'
+          >
+            {{! icon is separate from <a> tag because it is the only visible content in the button }}
+            <span class="screenreader-only">{{#t}}Add Assignment to {{name}}{{/t}}</span>
+            <i class="icon-plus"></i>
+          </a>
+        {{/if}}
+        {{#if canCreateOmittedAssignment}}
+          <button
+            type="button"
+            class="create_omitted_assignment Button Button--small"
+            title='{{#t}}Create assignment not included into grade calculation{{/t}}'
+          >
+            {{#t}}Create assignment not included into grade calculation{{/t}}
+          </button>
+        {{/if}}
+        <span class="tii-tool-mount-point" style="border: 1px solid #c7cdd1; margin-left: 2px; margin-right: 2px; border-radius: 3px;" data-assignment-group-id="{{id}}" data-assignment-group-name="{{name}}"></span>
       {{/if}}
       {{#ifAny ENV.PERMISSIONS.manage canDelete}}
         <div class="inline-block">
@@ -140,7 +178,9 @@
   </div>
 
   {{#if ENV.PERMISSIONS.manage_assignments_add}}
-    <form data-view="createAssignment" class="form-dialog"></form>
+    {{#unless addAssignmentLocked}}
+      <form data-view="createAssignment" class="form-dialog"></form>
+    {{/unless}}
   {{/if}}
   {{#if ENV.PERMISSIONS.manage}}
     <form data-view="editAssignmentGroup" class="form-dialog"></form>

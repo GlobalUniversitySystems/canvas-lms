@@ -67,6 +67,27 @@ class AssignmentsController < ApplicationController
         set_js_assignment_data
         set_tutorial_js_env
         set_section_list_js_env
+        # Assignment groups eligible for the "Second Opportunity" feature
+        # (mandatory + Points (2026) grading) that already have their first
+        # opportunity assignment created: the front-end should disable the
+        # default "add assignment" control for these groups.
+        second_opportunity_locked_group_ids = @context.assignment_groups.active.select(&:mandatory_points_2026?).filter_map do |group|
+          group.id if group.assignments.active.where.not(bba_custom_opportunity: nil).exists?
+        end
+
+        # Assignment groups eligible for the "Points MBM" opportunity chain
+        # that already have their first opportunity assignment created: the
+        # front-end should disable the default "add assignment"/"launch
+        # tool" controls for these groups entirely (unlike Points (2026)
+        # above, which keeps its tool launcher visible until its hardcoded
+        # cap of 2 is reached) - every opportunity after the first (2nd/3rd)
+        # must be created from the "Create Second Opportunity"/"Create
+        # Resit" button on the assignment itself, never by relaunching a
+        # tool or using "+ Add Assignment" at the group level again.
+        mbm_locked_group_ids = @context.assignment_groups.active.select(&:mandatory_points_mbm?).filter_map do |group|
+          group.id if group.assignments.active.where.not(mbm_opportunity_number: nil).exists?
+        end
+
         hash = {
           WEIGHT_FINAL_GRADES: @context.apply_group_weights?,
           POST_TO_SIS_DEFAULT: @context.account.sis_default_grade_export[:value],
@@ -77,6 +98,8 @@ class AssignmentsController < ApplicationController
           HAS_ASSIGNMENTS: @context.active_assignments.count > 0,
           QUIZ_LTI_ENABLED: quiz_lti_tool_enabled?,
           DUE_DATE_REQUIRED_FOR_ACCOUNT: due_date_required_for_account,
+          SECOND_OPPORTUNITY_LOCKED_GROUP_IDS: second_opportunity_locked_group_ids,
+          MBM_LOCKED_GROUP_IDS: mbm_locked_group_ids,
           FLAGS: {
             newquizzes_on_quiz_page: @context.root_account.feature_enabled?(:newquizzes_on_quiz_page),
             new_quizzes_modules_support: Account.site_admin.feature_enabled?(:new_quizzes_modules_support),
@@ -348,6 +371,25 @@ class AssignmentsController < ApplicationController
 
         @similarity_pledge = pledge_text
 
+        @can_create_second_opportunity = @assignment.second_opportunity_eligible_group? &&
+                                          @assignment.first_opportunity? &&
+                                          @assignment.second_opportunity_assignment.blank? &&
+                                          can_do(@assignment.assignment_group, @current_user, :create)
+        @can_create_next_mbm_opportunity = @assignment.points_mbm_eligible_group? &&
+                                            (@assignment.mbm_first_opportunity? || @assignment.mbm_second_opportunity?) &&
+                                            @assignment.assignment_group.opportunity == Assignment::MBM_THIRD_OPPORTUNITY &&
+                                            @assignment.mbm_next_opportunity_assignment.blank? &&
+                                            can_do(@assignment.assignment_group, @current_user, :create)
+        @next_mbm_opportunity_label = @assignment.mbm_next_opportunity_label
+        js_env({
+                 CAN_CREATE_SECOND_OPPORTUNITY: @can_create_second_opportunity,
+                 CREATE_SECOND_OPPORTUNITY_URL: @can_create_second_opportunity ? course_assignment_create_second_opportunity_path(@context, @assignment) : nil,
+                 IS_SECOND_OPPORTUNITY_ELIGIBLE_GROUP: @assignment.second_opportunity_eligible_group?,
+                 CAN_CREATE_NEXT_MBM_OPPORTUNITY: @can_create_next_mbm_opportunity,
+                 CREATE_NEXT_MBM_OPPORTUNITY_URL: @can_create_next_mbm_opportunity ? course_assignment_create_next_opportunity_path(@context, @assignment) : nil,
+                 NEXT_MBM_OPPORTUNITY_LABEL: @assignment.mbm_next_opportunity_label,
+                 IS_POINTS_MBM_ELIGIBLE_GROUP: @assignment.points_mbm_eligible_group?,
+               })
         js_env({
                  EULA_URL: tool_eula_url,
                  EXTERNAL_TOOLS: external_tools_json(@external_tools, @context, @current_user, session),
@@ -625,6 +667,11 @@ class AssignmentsController < ApplicationController
     @assignment.assignment_group = group if group
     # if no due_at was given, set it to 11:59 pm in the creator's time zone
     @assignment.infer_times
+    # "Points (2026)" courses allow entering/editing a custom points value;
+    # all other grading schemes keep points_possible fixed to the default.
+    unless @context.try(:grade_type_name) == "Points (2026)"
+      @assignment.points_possible = Assignment::DEFAULT_POINTS_POSSIBLE
+    end
     if authorized_action(@assignment, @current_user, :create)
       DueDateCacher.with_executing_user(@current_user) do
         respond_to do |format|
@@ -663,7 +710,7 @@ class AssignmentsController < ApplicationController
     if authorized_action(@assignment, @current_user, @assignment.new_record? ? :create : :update)
       @assignment.title = params[:title] if params[:title]
       @assignment.due_at = params[:due_at] if params[:due_at]
-      @assignment.points_possible = params[:points_possible] if params[:points_possible]
+      @assignment.points_possible ||= Assignment::DEFAULT_POINTS_POSSIBLE
       @assignment.submission_types = params[:submission_types] if params[:submission_types]
       @assignment.assignment_group_id = params[:assignment_group_id] if params[:assignment_group_id]
       @assignment.ensure_assignment_group(false)
@@ -706,6 +753,7 @@ class AssignmentsController < ApplicationController
         ROOT_OUTCOME_GROUP: outcome_group_json(@context.root_outcome_group, @current_user, session),
         ASSIGNMENT_GROUPS: json_for_assignment_groups,
         ASSIGNMENT_INDEX_URL: polymorphic_url([@context, :assignments]),
+        COURSE_GRADE_TYPE_NAME: @context.try(:grade_type_name),
         ASSIGNMENT_OVERRIDES: assignment_overrides_json(
           @assignment.overrides_for(@current_user, ensure_set_not_empty: true),
           @current_user
@@ -820,6 +868,8 @@ class AssignmentsController < ApplicationController
     if authorized_action(@assignment, @current_user, :delete)
       return render_unauthorized_action if editing_restricted?(@assignment)
 
+      @assignment.deleted_by = @current_user
+
       DueDateCacher.with_executing_user(@current_user) do
         @assignment.destroy
       end
@@ -827,6 +877,54 @@ class AssignmentsController < ApplicationController
       respond_to do |format|
         format.html { redirect_to(named_context_url(@context, :context_assignments_url)) }
         format.json { render json: assignment_json(@assignment, @current_user, session) }
+      end
+    end
+  end
+
+  # Creates the paired "Second Opportunity" assignment for a mandatory
+  # Points (2026) assignment group. Only usable from the *first* opportunity
+  # assignment, and only by users with permission to add assignments.
+  def create_second_opportunity
+    @assignment = api_find(@context.assignments.active, params[:assignment_id])
+
+    unless @assignment.second_opportunity_eligible_group? && @assignment.first_opportunity?
+      return render json: { error: t("This assignment is not eligible for a second opportunity.") }, status: :unprocessable_entity
+    end
+
+    if authorized_action(@assignment.assignment_group, @current_user, :create)
+      begin
+        second_assignment = @assignment.create_second_opportunity!(@current_user)
+      rescue => e
+        return render json: { error: e.message }, status: :unprocessable_entity
+      end
+
+      respond_to do |format|
+        format.json { render json: assignment_json(second_assignment, @current_user, session) }
+      end
+    end
+  end
+
+  # Creates the next assignment in a "Points MBM" opportunity chain (Second
+  # Opportunity when called from the first opportunity assignment, Resit
+  # when called from the second opportunity assignment). Reused across
+  # assignment/quiz/discussion show pages the same way #create_second_opportunity
+  # is, since only the underlying submittable differs.
+  def create_next_opportunity
+    @assignment = api_find(@context.assignments.active, params[:assignment_id])
+
+    unless @assignment.points_mbm_eligible_group? && (@assignment.mbm_first_opportunity? || @assignment.mbm_second_opportunity?)
+      return render json: { error: t("This assignment is not eligible for a next opportunity.") }, status: :unprocessable_entity
+    end
+
+    if authorized_action(@assignment.assignment_group, @current_user, :create)
+      begin
+        next_assignment = @assignment.create_next_mbm_opportunity!(@current_user)
+      rescue => e
+        return render json: { error: e.message }, status: :unprocessable_entity
+      end
+
+      respond_to do |format|
+        format.json { render json: assignment_json(next_assignment, @current_user, session) }
       end
     end
   end

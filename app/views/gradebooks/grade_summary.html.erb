@@ -38,9 +38,9 @@
         </div>
       <% else %>
         <div class="student_assignment final_grade">
-          <%= before_label(:total, "Total") %> <span class="grade"></span>
-          <% if @context.grading_standard_enabled? %>
-            (<span class="letter_grade" id="final_letter_grade_text">–</span>)
+          <% false && before_label(:total, "Total") %> <span class="false-grade"></span>
+          <% if false && @context.grading_standard_enabled? %>
+            <span class="letter_grade" id="final_letter_grade_text">–</span>
           <% end %>
         </div>
       <% end %>
@@ -56,19 +56,21 @@
       <div id="student-grades-show-all" class="show_all_details">
         <button type="button" class="Button" id="show_all_details_button"><%= t("Show All Details") %></button>
       </div>
-      <div id="assignments-not-weighted">
-        <% if @current_grading_period_id == 0 && @context.weighted_grading_periods? %>
-          <%= render :partial => "courses/sidebar_periods_weighting", :object => @presenter.grading_periods %>
-        <% else %>
-          <%= render :partial => "courses/sidebar_weighting", :object => @presenter.groups %>
-        <% end %>
-        <% unless @presenter.no_calculations? %>
-          <div id="only_consider_graded_assignments_wrapper" class="ic-Form-control ic-Form-control--checkbox">
-            <input type="checkbox" id="only_consider_graded_assignments" checked="true"/>
-            <label class="ic-Label" for="only_consider_graded_assignments"><%= t('labels.only_graded', "Calculate based only on graded assignments") %></label>
-          </div>
-        <% end %>
-      </div>
+      <% unless (@context&.grade_type_name == 'Competency' && @context&.is_module_category) %>
+        <div id="assignments-not-weighted">
+          <% if @current_grading_period_id == 0 && @context.weighted_grading_periods? %>
+            <%= render :partial => "courses/sidebar_periods_weighting", :object => @presenter.grading_periods %>
+          <% else %>
+            <%= render :partial => "courses/sidebar_weighting", :object => @presenter.groups %>
+          <% end %>
+          <% unless @presenter.no_calculations? %>
+            <div id="only_consider_graded_assignments_wrapper" class="ic-Form-control ic-Form-control--checkbox">
+              <input type="checkbox" id="only_consider_graded_assignments" checked="true"/>
+              <label class="ic-Label" for="only_consider_graded_assignments"><%= t('labels.only_graded', "Calculate based only on graded assignments") %></label>
+            </div>
+          <% end %>
+        </div>
+      <% end %>
       <% if @presenter.editable? %>
         <div id="whatif-score-description">
           <%= whatif_instructions %>
@@ -135,9 +137,6 @@
         <th scope="col"><%= t('headers.due', "Due") %></th>
         <th scope="col" class="status"><%= t('Status') %></th>
         <th scope="col" class="assignment_score"><%= t('headers.score', "Score") %></th>
-        <% if !@visibility_feedback_enabled %>
-          <th scope="col" class="possible"><%= t('headers.out_of', "Out of") %></th>
-        <% end %>
         <th scope="col"><span class="screenreader-only"><%= t('headers.details', "Details") %></span></th>
         <th scope="col"><span class="screenreader-only"><%= t('headers.submission_progress_status', "Submission Progress Status") %></span></th>
       </tr>
@@ -146,11 +145,23 @@
       <%
          submission = assignment_presenter.submission
          assignment = assignment_presenter.assignment
+
+         style = ''
+         if @course_data_description[:grade_type_name] == 'Competency' || @course_data_description[:grade_type_name] == 'Points (2026)' || @course_data_description[:grade_type_name] == 'Points MBM'
+           if (assignment.id.to_s.starts_with?("group-") || assignment.id.to_s.starts_with?("final-g"))
+             style = ''
+           else
+             style = "display: none"
+           end
+         else
+           style = ''
+         end
       %>
     <tr class="<%= assignment_presenter.classes %>"
         data-muted="<%= assignment_presenter.hide_grade_from_student? %>"
         data-pending_quiz="<%= assignment_presenter.quiz_pending_review? %>"
         id="<%= "submission_" + assignment.id.to_s %>"
+        style="<%= style %>"
         <% if assignment_presenter.excused? %>
           <% excused_label = t "This assignment is excused and will not be considered in the total calculation" %>
           aria-label="<%= excused_label %>"
@@ -196,21 +207,66 @@
             <span class="submission-extended-pill"></span>
           <% end %>
         </td>
-
-        <td class="assignment_score" title="<%= t(:click_to_change, "Click to test a different score") unless assignment_presenter.unchangeable? %>">
-          <div style="position: relative; height: 100%;" class="score_holder">
-            <% if !assignment_presenter.upload_status.present?  %>
-              <% js_bundle :progress_pill %>
-              <span class="assignment_presenter_for_submission" style="display: none;"><%= assignment_presenter.upload_status %></span>
-              <span class="react_pill_container"></span>
-            <% end %>
-            <span class="tooltip">
+        <% g_infos = @data_for_student_view.filter { |data| data[:group_id].to_s == assignment.id.to_s.gsub('group-', '') }[0] %>
+        <!--      changes here       -->
+<!--        <div data-test-ginfos="<%#= g_infos %>"></div>-->
+        <td
+          class="assignment_score"
+          style="background-color: <%= if g_infos.present? && g_infos[:any_submission_hidden]
+                                         'white'
+                                       else
+                                         assignment.id.to_s.starts_with?('group-') && @data_for_student_view.filter { |data| data[:group_id].to_s == assignment.id.to_s.gsub('group-', '') }&.first&.fetch(:is_failed, false) ? '#FCE8E7' : 'white'
+                                       end %>"
+          title="<%= t(:click_to_change, "Click to test a different score") unless assignment_presenter.unchangeable? %>">
+<!--          <div-->
+<!--            data-test-info1="<%#= @data_for_student_view %>"-->
+<!--            data-test-info2="<%#= @course_data_description %>"-->
+<!--            data-test-info2-1="<%#= @course_data_description[:is_module_category] %>"-->
+<!--            data-test-info3="<%#= @course_data_description[:is_module_category] == 'true' %>"-->
+<!--            data-test-info3-1="<%#= @course_data_description[:is_module_category].to_s == 'true' %>"-->
+<!--            data-test-info4="<%#= @data_for_student_view.filter { |data| data[:group_id].to_s == assignment.id.to_s.gsub('group-', '') }&.first&.fetch(:letter_grade, 'Not found') %>"-->
+<!--            data-test-info5="<%#= assignment.id %>"-->
+<!--            data-test-info6="<%#= assignment.id.to_s.starts_with?('group-') %>"-->
+<!--          ></div>-->
+          <% if @course_data_description[:grade_type_name] == 'Competency' %>
+            <% if assignment.id.to_s.starts_with?('group-') && @data_for_student_view.filter { |data| data[:group_id].to_s == assignment.id.to_s.gsub('group-', '') }&.first.present? %>
+              <% g_info = @data_for_student_view.filter { |data| data[:group_id].to_s == assignment.id.to_s.gsub('group-', '') }[0] %>
+              <% if @course_data_description[:is_module_category]&.to_s == 'true' %>
+                <div style="display: none" data-test-gr="<%= g_info %>"></div>
+                <span class="case2">
+                  <% if g_info && g_info[:any_submission_hidden] %>
+                    -
+                  <% else %>
+                    <%= g_info[:letter_grade] %>
+                  <% end %>
+                </span>
+              <% else %>
+              <span class="case1">
+                <% if g_info && g_info[:any_submission_hidden] %>
+                  -
+                <% else %>
+                  <%= g_info[:letter_grade] %>
+                <% end %>
+              </span>
+              <% end %>
+            <% elsif assignment.id.to_s.starts_with?('final-grad')%>
+              <span class="fffinal <%= @final_grade_new_logic %>">
+                <%= @final_grade_new_logic %>
+              </span>
+            <% else %>
+              <div style="position: relative; height: 100%;" class="score_holder">
+                <% if !assignment_presenter.upload_status.present?  %>
+                  <% js_bundle :progress_pill %>
+                  <span class="assignment_presenter_for_submission" style="display: none;"><%= assignment_presenter.upload_status %></span>
+                  <span class="react_pill_container"></span>
+                <% end %>
+                <span class="tooltip">
               <span
                 class="grade"
                 <% unless assignment_presenter.unchangeable? %>
                   tabindex="0"
                 <% end %>
-              >
+                >
                 <span class="tooltip_wrap right" aria-hidden="true">
                   <% if @presenter.editable? || assignment.special_class %>
                     <span class="tooltip_text score_teaser">
@@ -238,49 +294,312 @@
                   <%= student_score_display_for(submission, !can_do(@context, @current_user, :manage_grades)) %>
                 <% end %>
               </span>
-              <% if assignment_presenter.is_letter_graded_or_gpa_scaled? %>
+                  <% if assignment_presenter.is_letter_graded_or_gpa_scaled? %>
                 <span class="score_value">
                   <%= assignment_presenter.display_score %>
                 </span>
               <% end %>
-              <% if @visibility_feedback_enabled %>
+                  <% if @visibility_feedback_enabled %>
                 <% if assignment_presenter.points_graded? && assignment.points_possible.present? %>
                   <span>/ <%= n(round_if_whole(assignment.points_possible)) %></span>
                 <% end %>
               <% end %>
             </span>
-            <div style="display: none;">
-              <!-- Store the original points so we don't need to parse and guess at locale -->
-              <span class="original_points">
+                <div style="display: none;">
+                  <!-- Store the original points so we don't need to parse and guess at locale -->
+                  <span class="original_points">
                 <%= assignment_presenter.original_points %>
               </span>
-              <!-- Store the original score so that we can retrieve it after any "What-If" calculations -->
-              <span class="original_score">
+                  <!-- Store the original score so that we can retrieve it after any "What-If" calculations -->
+                  <span class="original_score">
                 <%= assignment_presenter.display_score %>
               </span>
-              <!-- Store the current score so that it can persist between multiple "What-If" calculations -->
-              <span class="what_if_score">
+                  <!-- Store the current score so that it can persist between multiple "What-If" calculations -->
+                  <span class="what_if_score">
                 <%= assignment_presenter.display_score %>
               </span>
-              <!-- Load any previously saved "What-If" scores -->
-              <span class="student_entered_score">
+                  <!-- Load any previously saved "What-If" scores -->
+                  <span class="student_entered_score">
                 <%= submission.student_entered_score rescue "" %>
               </span>
-              <span class="submission_status">
+                  <span class="submission_status">
                 <%= submission.blank? ? 'none' : submission.workflow_state %>
               </span>
-              <span class="assignment_group_id"><%= assignment.assignment_group_id rescue "" %></span>
-              <span class="assignment_id"><%= assignment.id.to_s %></span>
-              <span class="group_weight"><%= assignment.group_weight rescue "" %></span>
-              <span class="rules"><%= assignment.rules rescue "" %></span>
+                  <span class="assignment_group_id"><%= assignment.assignment_group_id rescue "" %></span>
+                  <span class="assignment_id"><%= assignment.id.to_s %></span>
+                  <span class="group_weight"><%= assignment.group_weight rescue "" %></span>
+                  <span class="rules"><%= assignment.rules rescue "" %></span>
+                </div>
+              </div>
+            <% end %>
+          <% elsif @course_data_description[:grade_type_name] == 'Points (2026)' %>
+            <% if assignment.id.to_s.starts_with?('group-') && @data_for_student_view.filter { |data| data[:group_id].to_s == assignment.id.to_s.gsub('group-', '') }&.first.present? %>
+              <% g_info = @data_for_student_view.filter { |data| data[:group_id].to_s == assignment.id.to_s.gsub('group-', '') }[0] %>
+              <div style="display: none" data-test-gr="<%= g_info %>"></div>
+              <span class="points2026">
+                <% if g_info && g_info[:any_submission_hidden] %>
+                  -
+                <% else %>
+                  <%= g_info[:letter_grade] %>
+                <% end %>
+              </span>
+            <% elsif assignment.id.to_s.starts_with?('final-grad')%>
+              <span class="fffinal <%= @final_grade_new_logic %>">
+                <%= @final_grade_new_logic %>
+              </span>
+            <% else %>
+              <div style="position: relative; height: 100%;" class="score_holder">
+                <% if !assignment_presenter.upload_status.present?  %>
+                  <% js_bundle :progress_pill %>
+                  <span class="assignment_presenter_for_submission" style="display: none;"><%= assignment_presenter.upload_status %></span>
+                  <span class="react_pill_container"></span>
+                <% end %>
+                <span class="tooltip">
+              <span
+                class="grade"
+                <% unless assignment_presenter.unchangeable? %>
+                tabindex="0"
+                <% end %>
+                >
+                <span class="tooltip_wrap right" aria-hidden="true">
+                  <% if @presenter.editable? || assignment.special_class %>
+                    <span class="tooltip_text score_teaser">
+                      <% if assignment_presenter.hide_grade_from_student? %>
+                        <%= hidden_text %>
+                      <% elsif submission.try :pending_review? %>
+                        <%= hidden_text %>
+                      <% elsif assignment.special_class %>
+                        <%= t(:total, "Total") %>
+                      <% else %>
+                        <%= t(:click_to_change, "Click to test a different score") %>
+                      <% end %>
+                    </span>
+                  <% end %>
+                </span>
+                <% if assignment_presenter.hide_grade_from_student? %>
+                  <i class="icon-off" title="<%= hidden_text %>"></i>
+                <% else %>
+                  <span class="screenreader-only" role="button">
+                    <%= t(:click_to_change, "Click to test a different score") unless assignment_presenter.unchangeable? %>
+                  </span>
+                  <% if submission.try :pending_review? %>
+                    <span class="screenreader-only"><%= hidden_text %></span>
+                  <% end %>
+                  <%= student_score_display_for(submission, !can_do(@context, @current_user, :manage_grades)) %>
+                <% end %>
+              </span>
+                  <% if assignment_presenter.is_letter_graded_or_gpa_scaled? %>
+                <span class="score_value">
+                  <%= assignment_presenter.display_score %>
+                </span>
+                  <% end %>
+                  <% if @visibility_feedback_enabled %>
+                    <% if assignment_presenter.points_graded? && assignment.points_possible.present? %>
+                      <span>/ <%= n(round_if_whole(assignment.points_possible)) %></span>
+                    <% end %>
+                  <% end %>
+                </span>
+                <div style="display: none;">
+                  <!-- Store the original points so we don't need to parse and guess at locale -->
+                  <span class="original_points">
+                    <%= assignment_presenter.original_points %>
+                  </span>
+                  <!-- Store the original score so that we can retrieve it after any "What-If" calculations -->
+                  <span class="original_score">
+                    <%= assignment_presenter.display_score %>
+                  </span>
+                  <!-- Store the current score so that it can persist between multiple "What-If" calculations -->
+                  <span class="what_if_score">
+                    <%= assignment_presenter.display_score %>
+                  </span>
+                  <!-- Load any previously saved "What-If" scores -->
+                  <span class="student_entered_score">
+                    <%= submission.student_entered_score rescue "" %>
+                  </span>
+                  <span class="submission_status">
+                    <%= submission.blank? ? 'none' : submission.workflow_state %>
+                  </span>
+                  <span class="assignment_group_id"><%= assignment.assignment_group_id rescue "" %></span>
+                  <span class="assignment_id"><%= assignment.id.to_s %></span>
+                  <span class="group_weight"><%= assignment.group_weight rescue "" %></span>
+                  <span class="rules"><%= assignment.rules rescue "" %></span>
+                </div>
+              </div>
+            <% end %>
+          <% elsif @course_data_description[:grade_type_name] == 'Points MBM' %>
+            <% if assignment.id.to_s.starts_with?('group-') && @data_for_student_view.filter { |data| data[:group_id].to_s == assignment.id.to_s.gsub('group-', '') }&.first.present? %>
+              <% g_info = @data_for_student_view.filter { |data| data[:group_id].to_s == assignment.id.to_s.gsub('group-', '') }[0] %>
+              <div style="display: none" data-test-gr="<%= g_info %>"></div>
+              <span class="points2026">
+                <% if g_info && g_info[:any_submission_hidden] %>
+                  -
+                <% else %>
+                  <%= g_info[:letter_grade] %>
+                <% end %>
+              </span>
+            <% elsif assignment.id.to_s.starts_with?('final-grad')%>
+              <span class="fffinal <%= @final_grade_new_logic %>">
+                <%= @final_grade_new_logic %>
+              </span>
+            <% else %>
+              <div style="position: relative; height: 100%;" class="score_holder">
+                <% if !assignment_presenter.upload_status.present?  %>
+                  <% js_bundle :progress_pill %>
+                  <span class="assignment_presenter_for_submission" style="display: none;"><%= assignment_presenter.upload_status %></span>
+                  <span class="react_pill_container"></span>
+                <% end %>
+                <span class="tooltip">
+              <span
+                class="grade"
+                <% unless assignment_presenter.unchangeable? %>
+                tabindex="0"
+                <% end %>
+                >
+                <span class="tooltip_wrap right" aria-hidden="true">
+                  <% if @presenter.editable? || assignment.special_class %>
+                    <span class="tooltip_text score_teaser">
+                      <% if assignment_presenter.hide_grade_from_student? %>
+                        <%= hidden_text %>
+                      <% elsif submission.try :pending_review? %>
+                        <%= hidden_text %>
+                      <% elsif assignment.special_class %>
+                        <%= t(:total, "Total") %>
+                      <% else %>
+                        <%= t(:click_to_change, "Click to test a different score") %>
+                      <% end %>
+                    </span>
+                  <% end %>
+                </span>
+                <% if assignment_presenter.hide_grade_from_student? %>
+                  <i class="icon-off" title="<%= hidden_text %>"></i>
+                <% else %>
+                  <span class="screenreader-only" role="button">
+                    <%= t(:click_to_change, "Click to test a different score") unless assignment_presenter.unchangeable? %>
+                  </span>
+                  <% if submission.try :pending_review? %>
+                    <span class="screenreader-only"><%= hidden_text %></span>
+                  <% end %>
+                  <%= student_score_display_for(submission, !can_do(@context, @current_user, :manage_grades)) %>
+                <% end %>
+              </span>
+                  <% if assignment_presenter.is_letter_graded_or_gpa_scaled? %>
+                <span class="score_value">
+                  <%= assignment_presenter.display_score %>
+                </span>
+                  <% end %>
+                  <% if @visibility_feedback_enabled %>
+                    <% if assignment_presenter.points_graded? && assignment.points_possible.present? %>
+                      <span>/ <%= n(round_if_whole(assignment.points_possible)) %></span>
+                    <% end %>
+                  <% end %>
+                </span>
+                <div style="display: none;">
+                  <!-- Store the original points so we don't need to parse and guess at locale -->
+                  <span class="original_points">
+                    <%= assignment_presenter.original_points %>
+                  </span>
+                  <!-- Store the original score so that we can retrieve it after any "What-If" calculations -->
+                  <span class="original_score">
+                    <%= assignment_presenter.display_score %>
+                  </span>
+                  <!-- Store the current score so that it can persist between multiple "What-If" calculations -->
+                  <span class="what_if_score">
+                    <%= assignment_presenter.display_score %>
+                  </span>
+                  <!-- Load any previously saved "What-If" scores -->
+                  <span class="student_entered_score">
+                    <%= submission.student_entered_score rescue "" %>
+                  </span>
+                  <span class="submission_status">
+                    <%= submission.blank? ? 'none' : submission.workflow_state %>
+                  </span>
+                  <span class="assignment_group_id"><%= assignment.assignment_group_id rescue "" %></span>
+                  <span class="assignment_id"><%= assignment.id.to_s %></span>
+                  <span class="group_weight"><%= assignment.group_weight rescue "" %></span>
+                  <span class="rules"><%= assignment.rules rescue "" %></span>
+                </div>
+              </div>
+            <% end %>
+          <% else %>
+            <div style="position: relative; height: 100%;" class="score_holder">
+              <% if !assignment_presenter.upload_status.present?  %>
+                <% js_bundle :progress_pill %>
+                <span class="assignment_presenter_for_submission" style="display: none;"><%= assignment_presenter.upload_status %></span>
+                <span class="react_pill_container"></span>
+              <% end %>
+              <span class="tooltip">
+              <span
+                class="grade"
+                <% unless assignment_presenter.unchangeable? %>
+                  tabindex="0"
+                <% end %>
+                >
+                <span class="tooltip_wrap right" aria-hidden="true">
+                  <% if @presenter.editable? || assignment.special_class %>
+                    <span class="tooltip_text score_teaser">
+                      <% if assignment_presenter.hide_grade_from_student? %>
+                        <%= hidden_text %>
+                      <% elsif submission.try :pending_review? %>
+                        <%= hidden_text %>
+                      <% elsif assignment.special_class %>
+                        <%= t(:total, "Total") %>
+                      <% else %>
+                        <%= t(:click_to_change, "Click to test a different score") %>
+                      <% end %>
+                    </span>
+                  <% end %>
+                </span>
+                <% if assignment_presenter.hide_grade_from_student? %>
+                  <i class="icon-off" title="<%= hidden_text %>"></i>
+                <% else %>
+                  <span class="screenreader-only" role="button">
+                    <%= t(:click_to_change, "Click to test a different score") unless assignment_presenter.unchangeable? %>
+                  </span>
+                  <% if submission.try :pending_review? %>
+                    <span class="screenreader-only"><%= hidden_text %></span>
+                  <% end %>
+                  <%= student_score_display_for(submission, !can_do(@context, @current_user, :manage_grades)) %>
+                <% end %>
+              </span>
+                <% if assignment_presenter.is_letter_graded_or_gpa_scaled? %>
+                <span class="score_value">
+                  <%= assignment_presenter.display_score %>
+                </span>
+              <% end %>
+                <% if @visibility_feedback_enabled %>
+                <% if assignment_presenter.points_graded? && assignment.points_possible.present? %>
+                  <span>/ <%= n(round_if_whole(assignment.points_possible)) %></span>
+                <% end %>
+              <% end %>
+            </span>
+              <div style="display: none;">
+                <!-- Store the original points so we don't need to parse and guess at locale -->
+                <span class="original_points">
+                <%= assignment_presenter.original_points %>
+              </span>
+                <!-- Store the original score so that we can retrieve it after any "What-If" calculations -->
+                <span class="original_score">
+                <%= assignment_presenter.display_score %>
+              </span>
+                <!-- Store the current score so that it can persist between multiple "What-If" calculations -->
+                <span class="what_if_score">
+                <%= assignment_presenter.display_score %>
+              </span>
+                <!-- Load any previously saved "What-If" scores -->
+                <span class="student_entered_score">
+                <%= submission.student_entered_score rescue "" %>
+              </span>
+                <span class="submission_status">
+                <%= submission.blank? ? 'none' : submission.workflow_state %>
+              </span>
+                <span class="assignment_group_id"><%= assignment.assignment_group_id rescue "" %></span>
+                <span class="assignment_id"><%= assignment.id.to_s %></span>
+                <span class="group_weight"><%= assignment.group_weight rescue "" %></span>
+                <span class="rules"><%= assignment.rules rescue "" %></span>
+              </div>
             </div>
-          </div>
+          <% end %>
         </td>
-        <% if !@visibility_feedback_enabled %>
-          <td class="possible points_possible">
-            <%= n(round_if_whole(assignment.points_possible)) %>
-          </td>
-        <% end %>
         <td class="details <%= @visibility_feedback_enabled && 'visibility_feedback_ff' %>">
           <% if !assignment.special_class %>
           <a href="#"

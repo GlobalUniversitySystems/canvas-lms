@@ -1167,6 +1167,11 @@ class AssignmentsApiController < ApplicationController
   def create
     @assignment = @context.assignments.build
     @assignment.workflow_state = "unpublished"
+    # "Points (2026)" courses allow entering/editing a custom points value;
+    # all other grading schemes keep points_possible fixed to the default.
+    unless @context.try(:grade_type_name) == "Points (2026)"
+      @assignment.points_possible = Assignment::DEFAULT_POINTS_POSSIBLE
+    end
     if authorized_action(@assignment, @current_user, :create)
       @assignment.content_being_saved_by(@current_user)
       result = create_api_assignment(@assignment, params.require(:assignment), @current_user, @context,

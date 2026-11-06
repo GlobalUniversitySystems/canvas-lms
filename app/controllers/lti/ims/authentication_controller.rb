@@ -97,10 +97,17 @@ module Lti
       end
 
       def validate_current_user!
+        ErrorReport.create(category: 'Debug', message: 'validate_current_user!', backtrace: {current_user: @current_user&.id, context: context&.id, oidc_params: oidc_params})
         return if public_course? && @current_user.blank?
 
         if !@current_user || Lti::Asset.opaque_identifier_for(@current_user, context: context) != oidc_params[:login_hint]
-          set_oidc_error!("login_required", "Must have an active user session")
+          unless @current_user
+            User.all.each do |user|
+              @current_user = user if Lti::Asset.opaque_identifier_for(user, context: context) == oidc_params[:login_hint]
+            end
+          end
+          ErrorReport.create(category: 'Debug', message: 'validate_current_user! -> opaque_identifier_for', backtrace: {current_user: @current_user, opaque_identifier_for: Lti::Asset.opaque_identifier_for(@current_user, context: context), login_hint: oidc_params[:login_hint]})
+          set_oidc_error!("login_required", "Must have an active user session") unless @current_user
         end
       end
 

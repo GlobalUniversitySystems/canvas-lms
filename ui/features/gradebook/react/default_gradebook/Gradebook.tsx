@@ -4590,10 +4590,19 @@ class Gradebook extends React.Component<GradebookProps, GradebookState> {
         }
       }
     } else {
-      FlashAlert.showFlashAlert({
-        message: I18n.t(
+      const _invalidAssignment = this.getAssignment(submission.assignmentId)
+      let _invalidGradeMessage
+      if (_invalidAssignment?.grade_type_name === 'Points (2026)') {
+        _invalidGradeMessage = I18n.t(
+          'Grade must be between 0 and 10 with at most one decimal place'
+        )
+      } else {
+        _invalidGradeMessage = I18n.t(
           'You have entered an invalid grade for this student. Check the value and the grading type and try again.'
-        ),
+        )
+      }
+      FlashAlert.showFlashAlert({
+        message: _invalidGradeMessage,
         type: 'error',
         err: undefined
       })

@@ -71,7 +71,8 @@ export default class AssignmentRowCellPropFactory {
     return {
       assignment: {
         id: assignment.id,
-        pointsPossible: assignment.points_possible
+        pointsPossible: assignment.points_possible,
+        gradeTypeName: assignment.grade_type_name
       },
 
       enterGradesAs: this.gradebook.getEnterGradesAsSetting(assignment.id),

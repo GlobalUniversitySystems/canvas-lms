@@ -107,6 +107,7 @@ export default class RosterUserView extends Backbone.View {
     json.canViewLoginIdColumn = ENV.permissions.view_user_logins
     json.canViewSisIdColumn = ENV.permissions.read_sis
     json.canManageUserNotes = ENV.permissions.manage_user_notes
+    json.isILP = json.ilp === true
 
     const candoAdminActions =
       ENV.permissions.can_allow_course_admin_actions || ENV.permissions.manage_admin_users

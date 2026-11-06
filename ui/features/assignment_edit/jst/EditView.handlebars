@@ -73,6 +73,7 @@
         {{#ifAny inClosedGradingPeriod lockedItems.points}}
           readonly
         {{/ifAny}}
+        {{#ifEqual ENV.COURSE_GRADE_TYPE_NAME "Points (2026)"}}{{else}}readonly{{/ifEqual}}
         {{disabledIfIncludes frozenAttributes "points_possible"}}
       />
       {{#unless lockedItems.points}}

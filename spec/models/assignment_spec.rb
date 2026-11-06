@@ -108,6 +108,63 @@ describe Assignment do
     expect(@assignment.errors[:grading_type]).not_to be_nil
   end
 
+  describe "mandatory points (2026) assignment-group validations" do
+    before do
+      course_with_teacher(active_all: true)
+      @course.update!(grade_type_name: "Points (2026)")
+      @group = @course.assignment_groups.create!(name: "Mandatory group", mandatory: true)
+    end
+
+    def build_group_assignment(attrs = {})
+      @course.assignments.build(assignment_valid_attributes.merge({
+                                                                    assignment_group: @group,
+                                                                    title: "Group assignment"
+                                                                  }).merge(attrs))
+    end
+
+    def create_group_assignment!(attrs = {})
+      assignment = build_group_assignment(attrs)
+      assignment.save!
+      assignment
+    end
+
+    it "blocks creating a third non-omitted assignment in mandatory points (2026) groups" do
+      create_group_assignment!(title: "A1", omit_from_final_grade: false)
+      create_group_assignment!(title: "A2", omit_from_final_grade: false)
+      assignment = build_group_assignment(title: "A3", omit_from_final_grade: false)
+
+      expect(assignment).not_to be_valid
+      expect(assignment.errors[:base]).to include("This assignment group is limited to a maximum of 2 assignments.")
+    end
+
+    it "allows creating a third assignment if it is omitted from final grade" do
+      create_group_assignment!(title: "A1", omit_from_final_grade: false)
+      create_group_assignment!(title: "A2", omit_from_final_grade: false)
+      assignment = build_group_assignment(title: "A3", omit_from_final_grade: true)
+
+      expect(assignment).to be_valid
+    end
+
+    it "prevents changing omit_from_final_grade from true back to false in mandatory points (2026) groups" do
+      assignment = create_group_assignment!(title: "A3", omit_from_final_grade: true)
+
+      expect(assignment.update(omit_from_final_grade: false)).to be(false)
+      expect(assignment.errors[:omit_from_final_grade]).to include("cannot be changed back to false for assignments in this group.")
+    end
+
+    it "allows changing omit_from_final_grade from true to false outside mandatory points (2026) groups" do
+      course_with_teacher(active_all: true)
+      non_points_group = @course.assignment_groups.create!(name: "Non points mandatory", mandatory: true)
+      assignment = @course.assignments.create!(assignment_valid_attributes.merge({
+                                                                                assignment_group: non_points_group,
+                                                                                title: "Regular assignment",
+                                                                                omit_from_final_grade: true
+                                                                              }))
+
+      expect(assignment.update(omit_from_final_grade: false)).to be(true)
+    end
+  end
+
   describe "default values" do
     it "sets grader_count to 0" do
       assignment = Assignment.create!(

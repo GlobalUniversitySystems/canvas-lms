@@ -30,6 +30,7 @@ CanvasRails::Application.routes.draw do
   # The subgraph endpoint is for use only with the federated API Gateway. See
   # `app/graphql/README.md` for details.
   get "graphiql", to: "graphql#graphiql"
+  get "/api/v1/courses/:course_id/grades_json/:id" => "gradebooks#grade_summary_json"
 
   resources :submissions, only: [] do
     resources :submission_comments, path: :comments, only: :index, defaults: { format: :pdf }
@@ -252,6 +253,7 @@ CanvasRails::Application.routes.draw do
     get "grades" => "gradebooks#grade_summary", :id => nil
     get "grading_rubrics" => "gradebooks#grading_rubrics"
     get "grades/:id" => "gradebooks#grade_summary", :as => :student_grades
+    get "grades_json/:id" => "gradebooks#grade_summary_json"
     post "save_assignment_order" => "gradebooks#save_assignment_order", :as => :save_assignment_order
     concerns :announcements
     get "calendar" => "calendars#show"
@@ -259,6 +261,8 @@ CanvasRails::Application.routes.draw do
     concerns :discussions
     resources :assignments do
       get "moderate" => "assignments#show_moderate"
+      post "second_opportunity" => "assignments#create_second_opportunity", as: :create_second_opportunity
+      post "next_opportunity" => "assignments#create_next_opportunity", as: :create_next_opportunity
 
       get "anonymous_submissions/:anonymous_id", to: "submissions/anonymous_previews#show",
                                                  constraints: lambda { |request|
@@ -1432,6 +1436,7 @@ CanvasRails::Application.routes.draw do
       delete "users/self/activity_stream", action: "ignore_all_stream_items"
 
       put "users/:user_id/followers/self", action: :follow
+      put "users/:user_id/update_ilp", action: :update_ilp
       delete "users/:user_id/followers/self", action: :unfollow
 
       get "users/self/todo", action: :todo_items, as: "user_todo_list_items"

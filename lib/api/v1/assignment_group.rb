@@ -30,6 +30,9 @@ module Api::V1::AssignmentGroup
     rules
     sis_source_id
     integration_data
+    component_type
+    mandatory
+    opportunity
   ].freeze
 
   def assignment_group_json(group, user, session, includes = [], opts = {})
@@ -38,7 +41,17 @@ module Api::V1::AssignmentGroup
 
     hash = api_json(group, user, session, only: %w[id name position group_weight sis_source_id integration_data])
     hash["rules"] = group.rules_hash(stringify_json_ids: opts[:stringify_json_ids])
-
+    hash["component_type"] = group.component_type if group.context&.is_module_category rescue nil
+    hash["mandatory"] = group.mandatory rescue nil
+    hash["opportunity"] = group.opportunity rescue nil
+    hash["is_module_category"] = group.context&.is_module_category rescue nil
+    hash["grade_type_name"] = group.context&.grade_type_name rescue nil
+    hash["passing_grade"] = group.context&.passing_grade rescue nil
+    grade_pass_info = group.context&.grade_passing_info
+    unless grade_pass_info.is_a?(Hash)
+      grade_pass_info = JSON.parse(grade_pass_info) rescue nil
+    end
+    hash["grade_passing_info"] = grade_pass_info rescue nil
     if includes.include?("assignments")
       assignments = opts[:assignments] || group.visible_assignments(user)
 

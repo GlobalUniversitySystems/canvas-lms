@@ -145,7 +145,7 @@ module GradebooksHelper
       if grade.nil?
         "-"
       else
-        I18n.n grade.to_f, percentage: true
+        I18n.n grade.to_f #, percentage: true
       end
     when "points"
       I18n.n round_if_whole(score.to_f.round(2))

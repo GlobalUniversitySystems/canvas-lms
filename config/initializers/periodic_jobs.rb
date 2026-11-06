@@ -246,6 +246,10 @@ Rails.configuration.after_initialize do
     with_each_shard_by_database(MissingPolicyApplicator, :apply_missing_deductions)
   end
 
+  Delayed::Periodic.cron "MissingSubmissionsGrader.process_missing_submissions", "*/5 * * * *", priority: Delayed::LOW_PRIORITY do
+    with_each_shard_by_database(MissingSubmissionsGrader, :process_missing_submissions)
+  end
+
   Delayed::Periodic.cron "Assignment.clean_up_duplicating_assignments", "*/5 * * * *", priority: Delayed::LOW_PRIORITY do
     with_each_shard_by_database(Assignment, :clean_up_duplicating_assignments)
   end

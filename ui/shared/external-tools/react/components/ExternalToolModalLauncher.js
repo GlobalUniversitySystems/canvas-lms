@@ -36,6 +36,7 @@ export default class ExternalToolModalLauncher extends React.Component {
     contextId: PropTypes.number.isRequired,
     launchType: PropTypes.string.isRequired,
     contextModuleId: PropTypes.string,
+    assignmentGroupId: PropTypes.string,
     onExternalContentReady: PropTypes.func
   }
 
@@ -88,7 +89,9 @@ export default class ExternalToolModalLauncher extends React.Component {
         '?display=borderless&launch_type=',
         this.props.launchType,
         this.props.contextModuleId && '&context_module_id=',
-        this.props.contextModuleId
+        this.props.contextModuleId,
+        this.props.assignmentGroupId && '&assignment_group_id=',
+        this.props.assignmentGroupId
       ].join('')
     }
   }

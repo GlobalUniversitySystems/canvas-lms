@@ -47,6 +47,12 @@ module Lti
         # * have resource links associated with them
         # * not reload the page
         unless create_resources_from_content_items?
+          if lti_resource_links.all? { |item| item[:url] == "https://api.turnitin.com/api/lti/1p3/launch" }
+            lti_resource_links.each { |item| create_update_assignment!(item) }
+            render_content_items(reload_page: true)
+            return
+          end
+
           lti_resource_links.each do |content_item|
             resource_link = Lti::ResourceLink.create_with(context, tool, content_item[:custom], content_item[:url])
             content_item[:lookup_uuid] = resource_link&.lookup_uuid
@@ -78,9 +84,19 @@ module Lti
         # create and validate assignments for content items with line items,
         # which will be added to a module later if necessary
         lti_resource_links.each do |content_item|
+          ErrorReport.create(
+            category: 'Debug',
+            message: 'lti_resource_links.each do |content_item|',
+            backtrace: {allow_line_items?: allow_line_items?, content_item: content_item, validate_line_item!: validate_line_item!(content_item)}
+          )
           next unless allow_line_items? && content_item.key?(:lineItem)
           next unless validate_line_item!(content_item)
 
+          ErrorReport.create(
+            category: 'Debug',
+            message: '-> create_update_assignment!(content_item)',
+            backtrace: ""
+          )
           create_update_assignment!(content_item)
         end
 
@@ -98,6 +114,11 @@ module Lti
         # * not create a new module
         # * reload the page
         if for_placement?(:course_assignments_menu) && allow_line_items? && lti_resource_links.all? { |item| item.key?(:lineItem) }
+          ErrorReport.create(
+            category: 'Debug',
+            message: 'in for_placement?(:course_assignments_menu) && allow...',
+            backtrace: ""
+          )
           render_content_items
           return
         end
@@ -151,6 +172,10 @@ module Lti
 
       def require_context_update_rights
         return unless create_resources_from_content_items?
+        # modal deep-linking responses are POSTed back from a cross-origin
+        # iframe, so the Canvas session cookie may not be present; rely on
+        # the already-verified deep linking JWT/tool binding in that case
+        return if value_to_boolean(params[:modal]) && @current_user.blank?
 
         authorized_action(@context, @current_user, %i[manage_content update])
       end

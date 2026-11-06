@@ -90,7 +90,7 @@ class GradebookExporter
     end
 
     # remove duplicate enrollments for students enrolled in multiple sections
-    student_enrollments = if @options[:current_view]
+    student_enrollments = if @options[:current_view] && @options[:student_order].present?
                             student_enrollments.select { |s| @options[:student_order].include?(s[:user_id]) }.uniq(&:user_id)
                           else
                             student_enrollments.uniq(&:user_id)
@@ -109,7 +109,7 @@ class GradebookExporter
 
     submissions = {}
     calc.submissions.each { |s| submissions[[s.user_id, s.assignment_id]] = s }
-    assignments = if @options[:current_view]
+    assignments = if @options[:current_view] && @options[:assignment_order].present?
                     calc.gradable_assignments.select { |a| @options[:assignment_order].include?(a[:id]) }
                   else
                     calc.gradable_assignments
@@ -149,13 +149,17 @@ class GradebookExporter
           header.concat(buffer_column_headers(:total_scores, assignment_group: group))
         end
 
-        header.concat(buffer_column_headers(:points)) if include_points?
-        header.concat(buffer_column_headers(:total_scores))
-        header.concat(buffer_column_headers(:grading_standard)) if @course.grading_standard_enabled?
+        if @course.grade_type_name == 'Competency'
+          header << "Total"
+        else
+          header.concat(buffer_column_headers(:points)) if include_points?
+          header.concat(buffer_column_headers(:total_scores))
+          header.concat(buffer_column_headers(:grading_standard)) if @course.grading_standard_enabled?
 
-        if include_final_grade_override?
-          header.concat(buffer_column_headers(:override_score))
-          header.concat(buffer_column_headers(:override_grade)) if @course.grading_standard_enabled?
+          if include_final_grade_override?
+            header.concat(buffer_column_headers(:override_score))
+            header.concat(buffer_column_headers(:override_grade)) if @course.grading_standard_enabled?
+          end
         end
       end
       csv << header
@@ -182,14 +186,21 @@ class GradebookExporter
 
         if should_show_totals
           row.concat([nil] * group_filler_length)
-          row.concat(buffer_columns(:points)) if include_points?
-          row.concat(buffer_columns(:total_scores))
+
+          if @course.grade_type_name == 'Competency'
+            row << nil
+          else
+            row.concat(buffer_columns(:points)) if include_points?
+            row.concat(buffer_columns(:total_scores))
+          end
         end
 
-        row.concat(buffer_columns(:grading_standard)) if @course.grading_standard_enabled?
-        if include_final_grade_override?
-          row.concat(buffer_columns(:override_score))
-          row.concat(buffer_columns(:override_grade)) if @course.grading_standard_enabled?
+        unless @course.grade_type_name == 'Competency'
+          row.concat(buffer_columns(:grading_standard)) if @course.grading_standard_enabled?
+          if include_final_grade_override?
+            row.concat(buffer_columns(:override_score))
+            row.concat(buffer_columns(:override_grade)) if @course.grading_standard_enabled?
+          end
         end
 
         lengths_match = header.length == row.length
@@ -216,16 +227,20 @@ class GradebookExporter
 
       if should_show_totals
         row.concat([read_only] * group_filler_length)
-        row << read_only << read_only if include_points?
-        row << read_only << read_only << read_only << read_only
-        row.concat(buffer_columns(:grading_standard, read_only)) if @course.grading_standard_enabled?
-        if include_final_grade_override?
-          allow_importing = Account.site_admin.feature_enabled?(:import_override_scores_in_gradebook)
-          # Override Score is not read-only if the user can import changes
-          row.concat(buffer_columns(:override_score, allow_importing ? nil : read_only))
+        if @course.grade_type_name == 'Competency'
+          row << read_only
+        else
+          row << read_only << read_only if include_points? # hide
+          row << read_only << read_only << read_only << read_only # hide
+          row.concat(buffer_columns(:grading_standard, read_only)) if @course.grading_standard_enabled? # hide
+          if include_final_grade_override? # hide
+            allow_importing = Account.site_admin.feature_enabled?(:import_override_scores_in_gradebook)
+            # Override Score is not read-only if the user can import changes
+            row.concat(buffer_columns(:override_score, allow_importing ? nil : read_only))
 
-          # Override Grade is always read-only
-          row.concat(buffer_columns(:override_grade, read_only)) if @course.grading_standard_enabled?
+            # Override Grade is always read-only
+            row.concat(buffer_columns(:override_grade, read_only)) if @course.grading_standard_enabled?
+          end
         end
       end
 
@@ -371,27 +386,31 @@ class GradebookExporter
   def show_overall_totals(student_enrollment, grade)
     result = []
 
-    if include_points?
-      result << format_numbers(grade[:current][:total])
-      result << format_numbers(grade[:final][:total])
-    end
+    if @course.grade_type_name == 'Competency'
+      result << @course.final_grade_new_logic(student_enrollment) rescue nil
+    else
+      if include_points?
+        result << format_numbers(grade[:current][:total])
+        result << format_numbers(grade[:final][:total])
+      end
 
-    score_opts = grading_period ? { grading_period_id: grading_period.id } : Score.params_for_course
-    result << format_numbers(student_enrollment.computed_current_score(score_opts))
-    result << format_numbers(student_enrollment.unposted_current_score(score_opts))
-    result << format_numbers(student_enrollment.computed_final_score(score_opts))
-    result << format_numbers(student_enrollment.unposted_final_score(score_opts))
+      score_opts = grading_period ? { grading_period_id: grading_period.id } : Score.params_for_course
+      result << format_numbers(student_enrollment.computed_current_score(score_opts))
+      result << format_numbers(student_enrollment.unposted_current_score(score_opts))
+      result << format_numbers(student_enrollment.computed_final_score(score_opts))
+      result << format_numbers(student_enrollment.unposted_final_score(score_opts))
 
-    if @course.grading_standard_enabled?
-      result << student_enrollment.computed_current_grade(score_opts)
-      result << student_enrollment.unposted_current_grade(score_opts)
-      result << student_enrollment.computed_final_grade(score_opts)
-      result << student_enrollment.unposted_final_grade(score_opts)
-    end
+      if @course.grading_standard_enabled?
+        result << student_enrollment.computed_current_grade(score_opts)
+        result << student_enrollment.unposted_current_grade(score_opts)
+        result << student_enrollment.computed_final_grade(score_opts)
+        result << student_enrollment.unposted_final_grade(score_opts)
+      end
 
-    if include_final_grade_override?
-      result << student_enrollment.override_score(score_opts)
-      result << student_enrollment.override_grade(score_opts) if @course.grading_standard_enabled?
+      if include_final_grade_override?
+        result << student_enrollment.override_score(score_opts)
+        result << student_enrollment.override_grade(score_opts) if @course.grading_standard_enabled?
+      end
     end
 
     result

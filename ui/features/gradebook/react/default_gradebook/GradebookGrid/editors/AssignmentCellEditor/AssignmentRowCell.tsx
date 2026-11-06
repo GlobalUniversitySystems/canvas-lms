@@ -31,6 +31,20 @@ import SimilarityIndicator from '../SimilarityIndicator'
 
 const I18n = useI18nScope('gradebook')
 
+const POINTS_2026_GRADE_TYPE = 'Points (2026)'
+
+function isValidGradeForPoints2026(gradeInfo, maxPoints = 10) {
+  if (!gradeInfo || gradeInfo.excused || gradeInfo.grade === null) return true
+  const score = gradeInfo.score
+  if (score === null || score === undefined || isNaN(Number(score))) return false
+  if (score < 0 || score > maxPoints) return false
+  // At most one decimal place
+  const scoreStr = String(score)
+  const dotIdx = scoreStr.indexOf('.')
+  if (dotIdx !== -1 && scoreStr.length - dotIdx - 1 > 1) return false
+  return true
+}
+
 const themeOverrides = {
   [Button.theme]: {
     iconPadding: '0 3px',
@@ -42,10 +56,12 @@ const themeOverrides = {
 }
 
 export default class AssignmentRowCell extends Component {
+
   static propTypes = {
     assignment: shape({
       id: string.isRequired,
-      pointsPossible: number
+      pointsPossible: number,
+      gradeTypeName: string
     }).isRequired,
     editorOptions: shape({
       column: shape({
@@ -165,7 +181,15 @@ export default class AssignmentRowCell extends Component {
   }
 
   gradeSubmission() {
-    this.props.onGradeSubmission(this.props.submission, this.gradeInput.gradeInfo)
+    const gradeInfo = this.gradeInput.gradeInfo
+    if (
+      this.props.assignment.gradeTypeName === POINTS_2026_GRADE_TYPE &&
+      !isValidGradeForPoints2026(gradeInfo, this.props.assignment.pointsPossible)
+    ) {
+      this.props.onGradeSubmission(this.props.submission, {...gradeInfo, valid: false})
+      return
+    }
+    this.props.onGradeSubmission(this.props.submission, gradeInfo)
   }
 
   isValueChanged() {

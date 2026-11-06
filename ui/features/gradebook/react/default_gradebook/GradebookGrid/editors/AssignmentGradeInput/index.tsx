@@ -51,7 +51,8 @@ function inputComponentFor(enterGradesAs) {
 export default class AssignmentGradeInput extends Component {
   static propTypes = {
     assignment: shape({
-      pointsPossible: number
+      pointsPossible: number,
+      gradeTypeName: string
     }).isRequired,
     disabled: bool,
     enterGradesAs: oneOf(['gradingScheme', 'passFail', 'percent', 'points']).isRequired,
@@ -105,7 +106,13 @@ export default class AssignmentGradeInput extends Component {
 
     const messages = []
     if (this.props.pendingGradeInfo && !this.props.pendingGradeInfo.valid) {
-      messages.push({type: 'error', text: I18n.t('This grade is invalid')})
+      let errorText
+      if (this.props.assignment.gradeTypeName === 'Points (2026)') {
+        errorText = I18n.t('Grade must be between 0 and 10 with at most one decimal place')
+      } else {
+        errorText = I18n.t('This grade is invalid')
+      }
+      messages.push({type: 'error', text: errorText})
     }
 
     const InputComponent = inputComponentFor(this.props.enterGradesAs)

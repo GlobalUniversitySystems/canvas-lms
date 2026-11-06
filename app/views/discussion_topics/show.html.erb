@@ -86,6 +86,28 @@
             </a>
           <% end %>
 
+          <% if @can_create_second_opportunity %>
+            <button
+              id="create_second_opportunity_button"
+              type="button"
+              class="btn"
+              data-url="<%= course_assignment_create_second_opportunity_path(@context, @topic.assignment) %>"
+            >
+              <%= t("Create Second Opportunity") %>
+            </button>
+          <% end %>
+
+          <% if @can_create_next_mbm_opportunity %>
+            <button
+              id="create_next_mbm_opportunity_button"
+              type="button"
+              class="btn"
+              data-url="<%= course_assignment_create_next_opportunity_path(@context, @topic.assignment) %>"
+            >
+              <%= @next_mbm_opportunity_label %>
+            </button>
+          <% end %>
+
           <% if @current_user.present? %>
             <div class="admin-links">
               <a class="al-trigger btn announcement_cog" href="#" role="button">

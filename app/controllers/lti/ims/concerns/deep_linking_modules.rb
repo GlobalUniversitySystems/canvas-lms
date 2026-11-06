@@ -38,13 +38,13 @@ module Lti::IMS::Concerns
     end
 
     def allow_line_items?
-      return false unless @context.root_account.feature_enabled? :lti_deep_linking_line_items
+      return false unless @context.root_account.reload.feature_enabled? :lti_deep_linking_line_items
 
       ALLOW_LINE_ITEM_PLACEMENTS.include?(params[:placement])
     end
 
     def create_new_module?
-      return false unless @context.root_account.feature_enabled?(:lti_deep_linking_module_index_menu_modal)
+      return false unless @context.root_account.reload.feature_enabled?(:lti_deep_linking_module_index_menu_modal)
 
       CREATE_NEW_MODULE_PLACEMENTS.include?(params[:placement])
     end
@@ -92,12 +92,14 @@ module Lti::IMS::Concerns
     def create_update_assignment!(content_item, assignment_id = nil)
       Assignment.transaction do
         assignment = @context.assignments.active.find_by(id: assignment_id) if assignment_id
+        is_new_assignment = assignment.nil?
         assignment ||= @context.assignments.new(workflow_state: "unpublished")
         assignment.update!(
           {
             submission_types: "external_tool",
             title: content_item[:title],
             description: content_item[:text],
+            assignment_group_id: params[:assignment_group_id].presence,
             points_possible: content_item.dig(:lineItem, :scoreMaximum),
             unlock_at: content_item.dig(:available, :startDateTime),
             lock_at: content_item.dig(:available, :endDateTime),
@@ -110,6 +112,9 @@ module Lti::IMS::Concerns
             }
           }
         )
+
+        assignment.auto_assign_second_opportunity!(@current_user) if is_new_assignment
+        assignment.auto_assign_next_mbm_opportunity!(@current_user) if is_new_assignment
 
         # make sure custom launch dimensions get to the ContentTag for launch from assignment
         assignment.external_tool_tag.update!(link_settings: launch_dimensions(content_item))

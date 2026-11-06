@@ -919,6 +919,14 @@ class User < ActiveRecord::Base
                          User.last_name_first(self.name, likely_already_surname_first: false)
   end
 
+  def ilp
+    read_attribute(:ilp)
+  end
+
+  def get_ilp
+    ilp
+  end
+
   def primary_pseudonym
     pseudonyms.active.first
   end

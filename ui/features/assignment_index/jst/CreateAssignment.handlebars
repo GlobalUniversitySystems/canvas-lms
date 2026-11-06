@@ -13,7 +13,11 @@
           <option value="none">{{#t "assignment"}}Assignment{{/t}}</option>
           <option value="discussion_topic">{{#t "discussion_type"}}Discussion{{/t}}</option>
           <option value="online_quiz">{{#t "quiz_type"}}Quiz{{/t}}</option>
-          <option value="external_tool">{{#t "external_tool_type"}}External Tool{{/t}}</option>
+          {{#ifEqual ENV.COURSE_GRADE_TYPE_NAME "Points (2026)"}}{{else}}
+            {{#ifEqual ENV.COURSE_GRADE_TYPE_NAME "Points MBM"}}{{else}}
+              <option value="external_tool">{{#t "external_tool_type"}}External Tool{{/t}}</option>
+            {{/ifEqual}}
+          {{/ifEqual}}
           <option value="not_graded">{{#t "not_graded_type"}}Not Graded{{/t}}</option>
         </select>
       </div>
@@ -109,6 +113,7 @@
     </div>
     {{/if}}
 
+    {{#ifEqual ENV.COURSE_GRADE_TYPE_NAME "Points (2026)"}}
     {{#if hasPointsPossible}}
     <div class="control-group">
       <label class="control-label" for="{{uniqLabel}}_assignment_points">
@@ -127,6 +132,7 @@
       </div>
     </div>
     {{/if}}
+    {{/ifEqual}}
 
     {{#if postToSISEnabled}}
       <fieldset>

@@ -28,7 +28,7 @@ module Importers
         add_groups_for_imported_assignments(data, migration)
         groups = data["assignment_groups"] || []
         groups.each do |group|
-          next unless migration.import_object?("assignment_groups", group["migration_id"])
+          # next unless migration.import_object?("assignment_groups", group["migration_id"])
 
           begin
             import_from_migration(group, migration.context, migration)
@@ -87,6 +87,8 @@ module Importers
       item.name = hash[:title]
       item.position = hash[:position].to_i if hash[:position] && hash[:position].to_i > 0
       item.group_weight = hash[:group_weight] if hash[:group_weight]
+      item.component_type = hash[:component_type] if hash[:component_type]
+      item.mandatory = hash[:mandatory] if hash[:mandatory]
 
       rules = ""
       if hash[:rules].present?

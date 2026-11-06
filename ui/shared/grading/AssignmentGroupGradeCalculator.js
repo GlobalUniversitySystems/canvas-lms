@@ -236,7 +236,76 @@ function calculateGroupGrade(group, allSubmissions, opts) {
     )
   }
 
-  const submissionsToKeep = dropAssignments(relevantSubmissionData, group.rules)
+  let submissionsToKeep = dropAssignments(relevantSubmissionData, group.rules)
+  if (group.grade_type_name === "Points (2026)" && group.mandatory) {
+    const opportunitySubmissions = submissionsToKeep.filter(
+      s =>
+        s.submitted &&
+        s.submission?.assignment &&
+        [1, 2].includes(s.submission.assignment.bba_custom_opportunity)
+    )
+
+    if (opportunitySubmissions.length > 1) {
+      const highestScoringSubmission = opportunitySubmissions.reduce((best, current) => {
+        const bestScore = parseScore(best.score)
+        const currentScore = parseScore(current.score)
+
+        if (currentScore > bestScore) {
+          return current
+        }
+
+        if (currentScore === bestScore && best.submission.assignment.bba_custom_opportunity === 2) {
+          return current
+        }
+
+        return best
+      })
+
+      submissionsToKeep = submissionsToKeep.filter(s => {
+        const opportunity = s.submission?.assignment?.bba_custom_opportunity
+        return ![1, 2].includes(opportunity) || s === highestScoringSubmission
+      })
+    }
+  }
+  if (group.grade_type_name === "Points MBM" && group.mandatory) {
+    // Unlike Points (2026) above, this keeps the highest-scoring submission
+    // among however many of the up to 3 chained opportunities are actually
+    // submitted - not just a pairwise comparison requiring both to be
+    // present. Ties favor the earliest opportunity (lowest
+    // mbm_opportunity_number).
+    const opportunitySubmissions = submissionsToKeep.filter(
+      s =>
+        s.submitted &&
+        s.submission?.assignment &&
+        [1, 2, 3].includes(s.submission.assignment.mbm_opportunity_number)
+    )
+
+    if (opportunitySubmissions.length >= 1) {
+      const highestScoringSubmission = opportunitySubmissions.reduce((best, current) => {
+        const bestScore = parseScore(best.score)
+        const currentScore = parseScore(current.score)
+
+        if (currentScore > bestScore) {
+          return current
+        }
+
+        if (
+          currentScore === bestScore &&
+          current.submission.assignment.mbm_opportunity_number <
+            best.submission.assignment.mbm_opportunity_number
+        ) {
+          return current
+        }
+
+        return best
+      })
+
+      submissionsToKeep = submissionsToKeep.filter(s => {
+        const opportunity = s.submission?.assignment?.mbm_opportunity_number
+        return ![1, 2, 3].includes(opportunity) || s === highestScoringSubmission
+      })
+    }
+  }
   const score = sum(
     _.chain(submissionsToKeep)
       .map('score')
@@ -249,6 +318,7 @@ function calculateGroupGrade(group, allSubmissions, opts) {
     score,
     possible,
     submission_count: _.filter(submissionData, 'submitted').length,
+    group_weight: group.group_weight,
     submissions: _.map(submissionData, submissionDatum => {
       const percent = submissionDatum.total
         ? divide(submissionDatum.score, submissionDatum.total)
@@ -313,6 +383,7 @@ function calculate(allSubmissions, assignmentGroup, ignoreUnpostedAnonymous) {
   return {
     assignmentGroupId: assignmentGroup.id,
     assignmentGroupWeight: assignmentGroup.group_weight,
+    mandatory: assignmentGroup.mandatory,
     current: calculateGroupGrade(assignmentGroup, submissions, {
       includeUngraded: false,
       ignoreUnpostedAnonymous

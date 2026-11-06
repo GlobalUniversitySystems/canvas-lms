@@ -73,6 +73,14 @@ class GradebooksController < ApplicationController
 
     @google_analytics_page_title = t("Grades for Student")
     load_grade_summary_data
+    @course_data_description = { grade_type_name: @context&.grade_type_name, is_module_category: @context&.is_module_category, passing_grade: @context&.passing_grade }
+    @data_for_student_view = data_for_student_view(@context.id, @presenter.student_id, @current_user.id == @presenter.student_id)
+    @final_grade_new_logic = if @data_for_student_view && @data_for_student_view.any? { |h| h[:any_submission_hidden] == true }
+                               '-'
+                             else
+                               @context&.final_grade_new_logic(student_enrollment, @current_user.id == @presenter.student_id) rescue 'Error calc final grade'
+                             end
+
     render stream: can_stream_template?
   end
 
@@ -166,6 +174,599 @@ class GradebooksController < ApplicationController
     end
 
     js_env(js_hash)
+  end
+
+  def data_for_student_view(course_id, student_id, hide_score = false)
+    course = Course.find(course_id)
+    student = User.find(student_id)
+    return_data = []
+    enrollment = resolve_student_enrollment_for_grades(course, student)
+    return return_data unless enrollment
+
+    if course.grade_type_name == 'Competency' # new logic
+      grade_passing_info = course.grade_passing_info
+      unless grade_passing_info.is_a?(Hash)
+        grade_passing_info = JSON.parse(grade_passing_info)
+      end
+
+      scores = enrollment.scores.where(course_score: false)
+      ag_ids = scores.pluck(:assignment_group_id)
+      ags = AssignmentGroup.where(id: ag_ids)
+
+      if course.is_module_category # case 2
+        ags.each do |group|
+          assignments = group.assignments.where.not(workflow_state: "deleted")
+          assignments = assignments.where(omit_from_final_grade: false)
+
+          if assignments.present?
+            submissions = Submission.where(assignment_id: assignments.pluck(:id), user_id: student.id)
+            score = submissions&.last&.published_score
+
+            if score
+              student_points = group.scores.where(enrollment_id: enrollment.id).where.not(workflow_state: 'deleted').sum(:final_points)
+              group_total_points = (student_points / group.points_possible_for_not_deleted_assignments) * 10.0 rescue 0
+
+              has_missing_submission = submissions.any? { |s| s.late_policy_status == 'missing' }
+
+              final_points_array = group.scores.where(enrollment_id: enrollment.id).where.not(workflow_state: 'deleted').pluck(:final_points)
+              insufficient_score = has_missing_submission || final_points_array.any? { |p| p == 0 }
+
+              student_points = has_missing_submission ? 0 : student_points
+              group_total_points = has_missing_submission ? 0 : group_total_points
+
+              return_data << {
+                group_id: group.id,
+                group_name: group.name,
+                points_possible: group.points_possible_for_not_deleted_assignments,
+                student_points: student_points,
+                group_total_points: group_total_points,
+                grade_type_name: course.grade_type_name,
+                any_submission_hidden: submissions&.any?(&:hide_grade_from_student?) || false,
+                is_module_category: course.is_module_category,
+                is_failed: insufficient_score ? true : (group_total_points <= grade_passing_info['Developing']['end']),
+                letter_grade: insufficient_score ? 'Ungradable' : fetch_letter(group_total_points, grade_passing_info)
+              }
+            end
+          end
+        end
+      else # case 1
+        ags.each do |group|
+          assignments = group.assignments.where.not(workflow_state: "deleted")
+          assignments = assignments.where(omit_from_final_grade: false)
+
+          if assignments.present?
+            submissions = Submission.where(assignment_id: assignments.pluck(:id), user_id: student.id)
+            score = submissions&.last&.published_score
+
+            if score
+              student_points = group.scores.where(enrollment_id: enrollment.id).where.not(workflow_state: 'deleted').sum(:final_points)
+              group_total_points = (student_points / group.points_possible_for_not_deleted_assignments) * 10.0 rescue 0
+
+              has_missing_submission = submissions.any? { |s| s.late_policy_status == 'missing' }
+
+              final_points_array = group.scores.where(enrollment_id: enrollment.id).where.not(workflow_state: 'deleted').pluck(:final_points)
+              insufficient_score = has_missing_submission || final_points_array.any? { |p| p == 0 }
+
+              return_data << {
+                group_id: group.id,
+                group_name: group.name,
+                points_possible: group.points_possible_for_not_deleted_assignments,
+                student_points: has_missing_submission ? 0 : student_points,
+                group_total_points: has_missing_submission ? 0 : group_total_points,
+                grade_type_name: course.grade_type_name,
+                is_module_category: course.is_module_category,
+                is_failed: has_missing_submission ? true : (group_total_points <= grade_passing_info['Developing']['end']),
+                letter_grade: insufficient_score ? 'Ungradable' : fetch_letter(group_total_points, grade_passing_info)
+              }
+            end
+          end
+        end
+      end
+    elsif course.grade_type_name == 'Points (2026)'
+      set_current_grading_period if grading_periods?
+
+      @presenter = grade_summary_presenter
+
+      grades_data = load_grade_summary_data_json_bba
+      grades_data.each do |hash|
+        hash = hash.with_indifferent_access
+
+        return_data << hash.tap do |h|
+          if hash[:points_possible] > 0
+            calc_grade = (hash[:student_points] / hash[:points_possible] * 10.0).round(1)
+            h[:is_failed] = (hash[:has_missing] && hash[:mandatory]) || (calc_grade < course.passing_grade)
+            h[:letter_grade] = (hash[:has_missing] && hash[:mandatory]) ? 'Ungradable' : fetch_letter_bba(calc_grade, course.grade_passing_info, hide_score)
+          end
+
+          h[:grade_type_name] = course.grade_type_name
+        end
+      end
+    elsif course.grade_type_name == 'Points MBM'
+      set_current_grading_period if grading_periods?
+
+      @presenter = grade_summary_presenter
+
+      grades_data = load_grade_summary_data_json_bba
+      grades_data.each do |hash|
+        hash = hash.with_indifferent_access
+
+        return_data << hash.tap do |h|
+          if hash[:points_possible] > 0
+            calc_grade = (hash[:student_points] / hash[:points_possible] * 10.0).round(1)
+            h[:is_failed] = (hash[:has_missing] && hash[:mandatory]) || (calc_grade < course.passing_grade)
+            # Points MBM's grade_passing_info ({"Fail"=>..., "Pass"=>...})
+            # is display-only, not Competency's 4-band structure, so it
+            # can't be run through #fetch_letter_bba - just Pass/Fail
+            # against the same passing_grade threshold used everywhere else.
+            h[:letter_grade] = (hash[:has_missing] && hash[:mandatory]) ? 'Ungradable' : fetch_letter_points_mbm(calc_grade, course.passing_grade, false)
+          end
+
+          h[:grade_type_name] = course.grade_type_name
+        end
+      end
+    else # old logic
+      set_current_grading_period if grading_periods?
+      @presenter = grade_summary_presenter
+
+      return_data = load_grade_summary_data_json
+      return_data.each do |hash|
+        hash[:grade_type_name] = course.grade_type_name
+        hash[:is_module_category] = course.is_module_category
+      end
+    end
+
+    return_data
+  end
+
+  def grade_summary_json
+    course = Course.find(params[:course_id])
+    student = User.find(params[:id])
+    return_data = []
+    enrollment = resolve_student_enrollment_for_grades(course, student)
+
+    if enrollment.nil? && ['Competency', 'Points (2026)', 'Points MBM'].include?(course.grade_type_name)
+      render json: { data: return_data }
+      return
+    end
+
+    if course.grade_type_name == 'Competency' # new logic
+      grade_passing_info = course.grade_passing_info
+      unless grade_passing_info.is_a?(Hash)
+        grade_passing_info = JSON.parse(grade_passing_info)
+      end
+
+      scores = enrollment.scores.where(course_score: false)
+      ag_ids = scores.pluck(:assignment_group_id)
+      ags = AssignmentGroup.where(id: ag_ids)
+
+      if course.is_module_category # case 2
+        ags.each do |group|
+          assignments = group.assignments.where.not(workflow_state: "deleted")
+          assignments = assignments.where(omit_from_final_grade: false)
+
+          if assignments.present?
+            submissions = Submission.where(assignment_id: assignments.pluck(:id), user_id: student.id)
+            score = submissions&.last&.published_score
+            has_missing_submission = submissions.any? { |s| s.late_policy_status == 'missing' }
+
+            student_points = group.scores.where(enrollment_id: enrollment.id).where.not(workflow_state: 'deleted').sum(:final_points)
+            group_total_points = (student_points / group.points_possible_for_not_deleted_assignments) * 10.0 rescue 0
+
+            final_points_array = group.scores.where(enrollment_id: enrollment.id).where.not(workflow_state: 'deleted').pluck(:final_points)
+            has_insufficient_score = has_missing_submission || final_points_array.any? { |p| p == 0 }
+
+            student_points = has_missing_submission ? 0 : student_points
+            group_total_points = has_missing_submission ? 0 : group_total_points
+
+            return_data << {
+              group_id: group.id,
+              group_name: group.name,
+              points_possible: group.points_possible_for_not_deleted_assignments,
+              student_points: student_points,
+              group_total_points: group_total_points,
+              grade_type_name: course.grade_type_name,
+              is_module_category: course.is_module_category,
+              is_failed: has_insufficient_score ? true : (group_total_points <= grade_passing_info['Developing']['end']),
+              letter_grade: has_insufficient_score ? 'Ungradable' : fetch_letter(group_total_points, grade_passing_info),
+              has_missing_submission: has_missing_submission
+            }
+          end
+        end
+      else # case 1
+        ags.each do |group|
+          assignments = group.assignments.where.not(workflow_state: "deleted")
+          assignments = assignments.where(omit_from_final_grade: false)
+
+          if assignments.present?
+            submissions = Submission.where(assignment_id: assignments.pluck(:id), user_id: student.id)
+            score = submissions&.last&.published_score
+            has_missing_submission = submissions.any? { |s| s.late_policy_status == 'missing' }
+
+            student_points = group.scores.where(enrollment_id: enrollment.id).where.not(workflow_state: 'deleted').sum(:final_points)
+            group_total_points = (student_points / group.points_possible_for_not_deleted_assignments) * 10.0 rescue 0
+
+            final_points_array = group.scores.where(enrollment_id: enrollment.id).where.not(workflow_state: 'deleted').pluck(:final_points)
+            has_insufficient_score = has_missing_submission || final_points_array.any? { |p| p == 0 }
+
+            return_data << {
+              group_id: group.id,
+              group_name: group.name,
+              points_possible: group.points_possible_for_not_deleted_assignments,
+              student_points: has_missing_submission ? 0 : student_points,
+              group_total_points: has_missing_submission ? 0 : group_total_points,
+              grade_type_name: course.grade_type_name,
+              is_module_category: course.is_module_category,
+              is_failed: has_missing_submission ? true : (group_total_points <= grade_passing_info['Developing']['end']),
+              letter_grade: has_insufficient_score ? 'Ungradable' : fetch_letter(group_total_points, grade_passing_info),
+              has_missing_submission: has_missing_submission
+            }
+          end
+        end
+      end
+    elsif course.grade_type_name == 'Points (2026)'
+      grade_passing_info = course.grade_passing_info
+      unless grade_passing_info.is_a?(Hash)
+        grade_passing_info = JSON.parse(grade_passing_info)
+      end
+
+      scores = enrollment.scores.where(course_score: false)
+      ag_ids = scores.pluck(:assignment_group_id)
+      ags = AssignmentGroup.where(id: ag_ids)
+
+      ags.each do |group|
+        assignments = group.assignments.where.not(workflow_state: "deleted")
+        assignments = assignments.where(omit_from_final_grade: false)
+
+        if assignments.present?
+          assignments.group_by(&:bba_custom_opportunity).each do |opportunity_number, grouped_assignments|
+            submissions = Submission.where(assignment_id: grouped_assignments.pluck(:id), user_id: student.id, workflow_state: 'graded')
+            if submissions.present?
+              has_missing_submission = submissions.any? { |s| s.late_policy_status == 'missing' }
+
+              student_points = submissions.sum(:published_score)
+              student_points = has_missing_submission ? 0 : student_points
+
+              return_data << {
+                group_id: group.id,
+                group_name: group.name,
+                is_mandatory: group.mandatory,
+                has_missing_submission: has_missing_submission,
+                student_points: student_points,
+                opportunity_number: opportunity_number,
+                points_possible: group.mandatory ? grouped_assignments.reduce(0) { |sum, assignment| sum + (assignment.points_possible || 0) } : group.points_possible_for_not_deleted_assignments
+              }
+            end
+          end
+        end
+      end
+    elsif course.grade_type_name == 'Points MBM'
+      scores = enrollment.scores.where(course_score: false)
+      ag_ids = scores.pluck(:assignment_group_id)
+      ags = AssignmentGroup.where(id: ag_ids)
+
+      ags.each do |group|
+        assignments = group.assignments.where.not(workflow_state: "deleted")
+        assignments = assignments.where(omit_from_final_grade: false)
+
+        if assignments.present?
+          assignments.group_by(&:mbm_opportunity_number).each do |opportunity_number, grouped_assignments|
+            submissions = Submission.where(assignment_id: grouped_assignments.pluck(:id), user_id: student.id, workflow_state: 'graded')
+            if submissions.present?
+              has_missing_submission = submissions.any? { |s| s.late_policy_status == 'missing' }
+
+              student_points = submissions.sum(:published_score)
+              student_points = has_missing_submission ? 0 : student_points
+
+              return_data << {
+                group_id: group.id,
+                group_name: group.name,
+                is_mandatory: group.mandatory,
+                has_missing_submission: has_missing_submission,
+                student_points: student_points,
+                opportunity_number: opportunity_number,
+                points_possible: group.mandatory ? grouped_assignments.reduce(0) { |sum, assignment| sum + (assignment.points_possible || 0) } : group.points_possible_for_not_deleted_assignments
+              }
+            end
+          end
+        end
+      end
+    else # old logic
+      set_current_grading_period if grading_periods?
+      @presenter = grade_summary_presenter
+
+      return_data = load_grade_summary_data_json
+      return_data.each do |hash|
+        hash[:grade_type_name] = course.grade_type_name
+        hash[:is_module_category] = course.is_module_category
+      end
+    end
+
+    render json: { data: return_data }
+  end
+
+  # Resolves "the" enrollment for a student in a course the same way
+  # GradeSummaryPresenter#student_enrollment_for does, so that total/grade
+  # calculations here stay consistent with what the gradebook and the
+  # student grades page display (both are ultimately backed by the same
+  # enrollment record and its Score rows).
+  def resolve_student_enrollment_for_grades(course, student)
+    enrollment_scope = course.all_student_enrollments.where(user_id: student.id)
+    enrollment_scope = enrollment_scope.where.not(workflow_state: "inactive")
+    enrollment_scope.first
+  end
+  private :resolve_student_enrollment_for_grades
+
+  def fetch_letter(score, grade_passing_info)
+    if grade_passing_info['Novice']['start'] <= score && score <= grade_passing_info['Novice']['end']
+      "Novice"
+    elsif grade_passing_info['Developing']['start'] <= score && score <= grade_passing_info['Developing']['end']
+      'Developing'
+    elsif grade_passing_info['Competent']['start'] <= score && score <= grade_passing_info['Competent']['end']
+      'Competent'
+    elsif grade_passing_info['Strong']['start'] <= score && score <= grade_passing_info['Strong']['end']
+      'Strong'
+    end
+  end
+
+  def fetch_letter_bba(score, grade_passing_info, hide_score)
+    if grade_passing_info['Novice']['start'] <= score && score <= grade_passing_info['Novice']['end']
+      hide_score ? "Novice" : "Novice (#{score.round(1)})"
+    elsif grade_passing_info['Developing']['start'] <= score && score <= grade_passing_info['Developing']['end']
+      hide_score ? "Developing" : "Developing (#{score.round(1)})"
+    elsif grade_passing_info['Competent']['start'] <= score && score <= grade_passing_info['Competent']['end']
+      hide_score ? "Competent" : "Competent (#{score.round(1)})"
+    elsif grade_passing_info['Strong']['start'] <= score && score <= grade_passing_info['Strong']['end']
+      hide_score ? "Strong" : "Strong (#{score.round(1)})"
+    elsif grade_passing_info['Ungradable']['start'] <= score && score <= grade_passing_info['Ungradable']['end']
+      'Ungradable'
+    end
+  end
+
+  # Points MBM's pass/fail letter, driven by the same passing_grade
+  # threshold used everywhere else in this scheme (grade_passing_info is
+  # display-only for this scheme - see doc/points_mbm_grading_scheme.md).
+  def fetch_letter_points_mbm(score, passing_grade, hide_score)
+    passed = score >= passing_grade
+    hide_score ? (passed ? 'Pass' : 'Fail') : "#{passed ? 'Pass' : 'Fail'} (#{score.round(1)})"
+  end
+
+  def load_grade_summary_data_json
+    gp_id = nil
+    if grading_periods?
+      @grading_periods = active_grading_periods_json
+      gp_id = @current_grading_period_id unless view_all_grading_periods?
+
+      effective_due_dates =
+        Submission.active
+                  .where(user_id: @presenter.student_id, assignment_id: @context.assignments.active)
+                  .select(:cached_due_date, :grading_period_id, :assignment_id, :user_id)
+                  .each_with_object({}) do |submission, hsh|
+          hsh[submission.assignment_id] = {
+            submission.user_id => {
+              due_at: submission.cached_due_date,
+              grading_period_id: submission.grading_period_id,
+            }
+          }
+        end
+    end
+
+    @exclude_total = exclude_total?(@context)
+
+    GuardRail.activate(:secondary) do
+      # run these queries on the secondary database for speed
+      @presenter.assignments
+      aggregate_assignments
+      @presenter.submissions
+      @presenter.assignment_stats
+    end
+
+    ActiveRecord::Associations.preload(@presenter.submissions, :visible_submission_comments)
+    assignments_hash = Assignment.where(id: @presenter.submissions.map(&:assignment_id)).pluck(:id, :title).to_h
+    submissions_json = @presenter.submissions.map do |submission|
+      json = {
+        assignment_id: submission.assignment_id,
+        assignment_name: assignments_hash[submission.assignment_id]
+      }
+      if submission.user_can_read_grade?(@presenter.student)
+        json.merge!({
+                      excused: submission.excused?,
+                      score: submission.score,
+                      workflow_state: submission.workflow_state
+                    })
+      end
+
+      json
+    end
+
+    ags_json = light_weight_ags_json_cust(@presenter.groups)
+
+    # js_hash = {
+    #   submissions: submissions_json,
+    #   assignment_groups: ags_json
+    # }
+
+    return_data = ags_json.each_with_object([]) do |hash, array|
+      hash = hash.with_indifferent_access
+      p_possible = hash['assignments'].map { |a| a.with_indifferent_access['points_possible'] }.sum
+      s_points = submissions_json.filter { |s| s.with_indifferent_access['workflow_state'] == 'graded' && s.with_indifferent_access['assignment_id'].in?(hash['assignments'].map { |a| a.with_indifferent_access['id'] }) }.map { |ss| ss.with_indifferent_access['score'] }.sum
+      percent = p_possible != 0 ? ((s_points / p_possible) * 100.0).round(2) : nil
+      array << {
+        group_id: hash['id'],
+        group_name: hash['name'],
+        points_possible: p_possible,
+        student_points: s_points,
+        # student_score_percentage: percent
+      }
+    end
+
+    return_data
+  end
+
+  def load_grade_summary_data_json_bba
+    gp_id = nil
+    if grading_periods?
+      @grading_periods = active_grading_periods_json
+      gp_id = @current_grading_period_id unless view_all_grading_periods?
+
+      effective_due_dates =
+        Submission.active
+                  .where(user_id: @presenter.student_id, assignment_id: @context.assignments.active)
+                  .select(:cached_due_date, :grading_period_id, :assignment_id, :user_id)
+                  .each_with_object({}) do |submission, hsh|
+          hsh[submission.assignment_id] = {
+            submission.user_id => {
+              due_at: submission.cached_due_date,
+              grading_period_id: submission.grading_period_id,
+            }
+          }
+        end
+    end
+
+    @exclude_total = exclude_total?(@context)
+
+    GuardRail.activate(:secondary) do
+      # run these queries on the secondary database for speed
+      @presenter.assignments
+      aggregate_assignments
+      @presenter.submissions
+      @presenter.assignment_stats
+    end
+
+    ActiveRecord::Associations.preload(@presenter.submissions, :visible_submission_comments)
+    assignments_hash = Assignment.where(id: @presenter.submissions.map(&:assignment_id)).pluck(:id, :title).to_h
+    submissions_json = @presenter.submissions.map do |submission|
+      json = {
+        assignment_id: submission.assignment_id,
+        assignment_name: assignments_hash[submission.assignment_id],
+        missing: submission.late_policy_status,
+        hidden: submission.hide_grade_from_student?
+      }
+      if submission.user_can_read_grade?(@presenter.student)
+        json.merge!({
+                      excused: submission.excused?,
+                      score: submission.score,
+                      workflow_state: submission.workflow_state
+                    })
+      end
+
+      json
+    end
+
+    if @context.grade_type_name == 'Points (2026)'
+      AssignmentSecondOpportunity.active.pluck(:first_assignment_id, :second_assignment_id).each do |first_assignment_id, second_assignment_id|
+        first_submission = submissions_json.find { |s| s.with_indifferent_access['assignment_id'] == first_assignment_id }
+        second_submission = submissions_json.find { |s| s.with_indifferent_access['assignment_id'] == second_assignment_id }
+        next unless first_submission && second_submission
+
+        first_score = first_submission.with_indifferent_access['score'].to_f
+        second_score = second_submission.with_indifferent_access['score'].to_f
+        winner = first_score >= second_score ? first_submission : second_submission
+
+        submissions_json.reject! { |s| [first_assignment_id, second_assignment_id].include?(s.with_indifferent_access['assignment_id']) }
+        submissions_json << winner
+      end
+    elsif @context.grade_type_name == 'Points MBM'
+      # "Highest score wins" across however many of the up to 3 chained
+      # opportunity assignments are actually graded (not just a pairwise
+      # comparison) - see doc/points_mbm_grading_scheme.md.
+      Assignment.where(context: @context)
+                .where.not(workflow_state: 'deleted')
+                .where.not(mbm_opportunity_number: nil)
+                .group_by(&:assignment_group_id)
+                .each_value do |chain_assignments|
+        next if chain_assignments.size < 2
+
+        chain_ids = chain_assignments.map(&:id)
+        opportunity_number_by_assignment_id = chain_assignments.index_by(&:id).transform_values(&:mbm_opportunity_number)
+        chain_submissions = submissions_json.select { |s| chain_ids.include?(s.with_indifferent_access['assignment_id']) }
+        graded_submissions = chain_submissions.select { |s| s.with_indifferent_access['score'].present? }
+        next if graded_submissions.empty?
+
+        # Ties favor the earliest opportunity (lowest mbm_opportunity_number).
+        winner = graded_submissions.max_by do |s|
+          sub = s.with_indifferent_access
+          [sub['score'].to_f, -(opportunity_number_by_assignment_id[sub['assignment_id']] || 0)]
+        end
+
+        submissions_json.reject! { |s| chain_ids.include?(s.with_indifferent_access['assignment_id']) }
+        submissions_json << winner
+      end
+    end
+
+    submissions_json.reject! { |s| s.with_indifferent_access['score'].nil? }
+
+    ags_json = light_weight_ags_json_cust(@presenter.groups)
+
+    # js_hash = {
+    #   submissions: submissions_json,
+    #   assignment_groups: ags_json
+    # }
+    graded_assignment_ids = submissions_json
+                              .select { |s| s[:workflow_state] == 'graded' }
+                              .map { |s| s[:assignment_id] }
+                              .to_set
+
+    return_data = ags_json.each_with_object([]) do |hash, array|
+      hash = hash.with_indifferent_access
+      # Assignments marked omit_from_final_grade ("not included into grade
+      # calculation") must never contribute to the group total shown on the
+      # student grades page, matching how lib/grade_calculator.rb already
+      # excludes them for the gradebook/grader view.
+      gradeable_assignment_ids = hash[:assignments]
+                                 .reject { |a| a.with_indifferent_access[:omit_from_final_grade] }
+                                 .map { |a| a.with_indifferent_access[:id] }
+      p_possible = hash[:assignments].select { |a| gradeable_assignment_ids.include?(a[:id]) && graded_assignment_ids.include?(a[:id]) }.sum { |a| a[:points_possible].to_f }
+      s_points = submissions_json.filter { |s| s.with_indifferent_access['workflow_state'] == 'graded' && gradeable_assignment_ids.include?(s.with_indifferent_access['assignment_id']) }.map { |ss| ss.with_indifferent_access['score'] }.sum
+      missing = submissions_json.filter { |s| s.with_indifferent_access['workflow_state'] == 'graded' && gradeable_assignment_ids.include?(s.with_indifferent_access['assignment_id']) }.any? { |s| s.with_indifferent_access['missing'] == 'missing' }
+      hidden = submissions_json.filter { |s| s.with_indifferent_access['workflow_state'] == 'graded' && gradeable_assignment_ids.include?(s.with_indifferent_access['assignment_id']) }.any? { |s| s.with_indifferent_access['hidden'] }
+      percent = p_possible != 0 ? ((s_points / p_possible) * 100.0).round(2) : nil
+      array << {
+        group_id: hash['id'],
+        group_name: hash['name'],
+        points_possible: p_possible,
+        student_points: s_points,
+        mandatory: hash['mandatory'],
+        has_missing: missing,
+        any_submission_hidden: hidden,
+        # student_score_percentage: percent
+      }
+    end
+
+    return_data
+  end
+
+  def light_weight_ags_json_cust(assignment_groups)
+    assignments_by_group = @presenter.assignments.each_with_object({}) do |assignment, assignments|
+      # Pseudo-assignment objects with a "special_class" set are created for
+      # assignment group totals, grading period totals, and course totals. We
+      # only care about real assignments here, so we'll ignore those
+      # pseudo-assignment objects.
+      next if assignment.special_class
+
+      assignments[assignment.assignment_group_id] ||= []
+      assignments[assignment.assignment_group_id] << {
+        id: assignment.id,
+        submission_types: assignment.submission_types_array,
+        points_possible: assignment.points_possible,
+        due_at: assignment.due_at,
+        omit_from_final_grade: assignment.omit_from_final_grade?,
+        muted: assignment.muted?
+      }
+    end
+
+    assignment_groups.map do |group|
+      {
+        id: group.id,
+        name: group&.name,
+        rules: group.rules_hash({ stringify_json_ids: true }),
+        group_weight: group.group_weight,
+        assignments: assignments_by_group.fetch(group.id, [])
+      }.tap do |hsh|
+        if group.course&.grade_type_name == 'Points (2026)' || group.course&.grade_type_name == 'Points MBM'
+          hsh[:mandatory] = group.mandatory
+        end
+      end
+    end
   end
 
   def save_assignment_order
@@ -1400,6 +2001,11 @@ class GradebooksController < ApplicationController
 
   def grade_summary_presenter
     options = presenter_options
+    # ErrorReport.create(
+    #   category: 'Debug',
+    #   message: 'presenter_options',
+    #   backtrace: {options: options, id: params[:id]}
+    # )
     if options.key?(:grading_period_id)
       GradingPeriodGradeSummaryPresenter.new(@context, @current_user, params[:id], **options)
     else

@@ -116,8 +116,14 @@ export default class IndexMenu extends React.Component {
     }
   }
 
-  renderTools = () =>
-    this.state.externalTools.map(tool => (
+  renderTools = () => {
+    // "Points (2026)"/"Points MBM" grading courses launch TII assignments
+    // from the per-assignment-group button instead (see
+    // AssignmentGroupToolLauncher), so assignment group can be set
+    // correctly. Hide the course-wide launcher here.
+    if (ENV.COURSE_GRADE_TYPE_NAME === 'Points (2026)' || ENV.COURSE_GRADE_TYPE_NAME === 'Points MBM') return null
+
+    return this.state.externalTools.map(tool => (
       <li key={tool.definition_id} role="menuitem">
         <a aria-label={tool.name} href="#" onClick={this.onLaunchTool(tool)}>
           <i className="icon-import" />
@@ -125,6 +131,7 @@ export default class IndexMenu extends React.Component {
         </a>
       </li>
     ))
+  }
 
   renderTrayTools = () => {
     if (ENV.assignment_index_menu_tools) {

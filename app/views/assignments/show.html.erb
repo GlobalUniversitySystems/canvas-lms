@@ -60,6 +60,26 @@
           </a>
         <% end %>
         <%= assignment_submission_button(@assignment, @current_user, @current_user_submission, @first_annotation_submission) %>
+        <% if @can_create_second_opportunity %>
+          <button
+            id="create_second_opportunity_button"
+            type="button"
+            class="btn"
+            data-url="<%= course_assignment_create_second_opportunity_path(@context, @assignment) %>"
+          >
+            <%= t("Create Second Opportunity") %>
+          </button>
+        <% end %>
+        <% if @can_create_next_mbm_opportunity %>
+          <button
+            id="create_next_mbm_opportunity_button"
+            type="button"
+            class="btn"
+            data-url="<%= course_assignment_create_next_opportunity_path(@context, @assignment) %>"
+          >
+            <%= @next_mbm_opportunity_label %>
+          </button>
+        <% end %>
         <% if show_moderation_link %>
           <a
             href='<%= course_assignment_moderate_url(@context, @assignment) %>'

@@ -400,7 +400,7 @@
         </div>
         <div id="course_grading_scheme">
           <div class="checkbox-flex-container">
-            <%= f.check_box :grading_standard_enabled, :class => "grading_standard_checkbox", :disabled => !can_manage %>
+            <%= f.check_box :grading_standard_enabled, :class => "grading_standard_checkbox", :disabled => true %>
             <%= f.label :grading_standard_enabled, :en => "Enable course grading scheme" %>
           </div>
           <div class="grading_standard_link" style="margin-<%= direction('left') %>: 20px;">

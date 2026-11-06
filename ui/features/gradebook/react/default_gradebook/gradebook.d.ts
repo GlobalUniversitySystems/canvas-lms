@@ -221,6 +221,10 @@ export type AssignmentGroup = {
   name: string
   position: number
   group_weight: number
+  component_type: string
+  is_module_category: boolean
+  grade_type_name: string
+  grade_passing_info: any
   assignments: Assignment[]
 }
 

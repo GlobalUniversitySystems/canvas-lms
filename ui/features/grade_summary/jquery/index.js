@@ -39,7 +39,7 @@ import {scoreToGrade} from '@canvas/grading/GradingSchemeHelper'
 import GradeFormatHelper from '@canvas/grading/GradeFormatHelper'
 import StatusPill from '@canvas/grading-status-pill'
 import SelectMenuGroup from '../react/SelectMenuGroup'
-import {scoreToPercentage} from '@canvas/grading/GradeCalculationHelper'
+import {divide, multiply, scoreToPercentage, scoreToPoints, toNumber} from '@canvas/grading/GradeCalculationHelper'
 
 const I18n = useI18nScope('gradingGradeSummary')
 
@@ -329,7 +329,7 @@ function canBeConvertedToGrade(score, possible) {
 
 function calculatePercentGrade(score, possible) {
   const percentGrade = scoreToPercentage(score, possible)
-  return round(percentGrade, round.DEFAULT)
+  return round(percentGrade, 1)
 }
 
 function formatPercentGrade(percentGrade) {
@@ -348,6 +348,23 @@ function subtotalByGradingPeriod() {
   const gpset = ENV.grading_period_set
   const gpselected = GradeSummary.getSelectedGradingPeriodId()
   return (!gpselected || gpselected === 0) && gpset && gpset.weighted
+}
+
+function calculateSubtotalScorePoints(score, possible) {
+  const floatingPointResult = (score / possible) * 10
+  if (!Number.isFinite(floatingPointResult)) {
+    return floatingPointResult
+  }
+
+  return toNumber(multiply(divide(score, possible), 10))
+}
+
+function formatSubtotalScorePoints(score, possible) {
+  if (possible > 0 && !isNaN(score)) {
+    return I18n.n(score , {precision: 1})
+  }
+
+  return I18n.t('N/A')
 }
 
 function calculateSubtotals(byGradingPeriod, calculatedGrades, currentOrFinal) {
@@ -375,11 +392,15 @@ function calculateSubtotals(byGradingPeriod, calculatedGrades, currentOrFinal) {
       } else {
         grade = {score: 0, possible: 0}
       }
-      const scoreText = I18n.n(grade.score, {precision: round.DEFAULT})
-      const possibleText = I18n.n(grade.possible, {precision: round.DEFAULT})
+
+      const subtotalScorePoints = calculateSubtotalScorePoints(grade.score, grade.possible)
+      const subtotalScorePointsText = formatSubtotalScorePoints(subtotalScorePoints, grade.possible)
+      const scoreText = I18n.n(grade.score, {precision: 1})
+      const possibleText = I18n.n(grade.possible, {precision: 1})
+
       const subtotal = {
         teaserText: `${scoreText} / ${possibleText}`,
-        gradeText: calculateGrade(grade.score, grade.possible),
+        gradeText: `${subtotalScorePointsText}`,
         rowElementId: `${params.elementIdPrefix}-${binId}`
       }
       subtotals.push(subtotal)
@@ -404,7 +425,7 @@ function finalGradePointsPossibleText(groupWeightingScheme, scoreWithPointsPossi
 
 function calculateTotals(calculatedGrades, currentOrFinal, groupWeightingScheme) {
   const gradeChanged = $('.grade.changed').length > 0
-  const showTotalGradeAsPoints = ENV.show_total_grade_as_points
+  const showTotalGradeAsPoints = true
 
   const subtotals = calculateSubtotals(subtotalByGradingPeriod(), calculatedGrades, currentOrFinal)
   for (let i = 0; i < subtotals.length; i++) {
@@ -416,10 +437,8 @@ function calculateTotals(calculatedGrades, currentOrFinal, groupWeightingScheme)
 
   const finalScore = calculatedGrades[currentOrFinal].score
   const finalPossible = calculatedGrades[currentOrFinal].possible
-  const scoreAsPoints = `${I18n.n(finalScore, {precision: round.DEFAULT})} / ${I18n.n(
-    finalPossible,
-    {precision: round.DEFAULT}
-  )}`
+  const finalScoreAsPoints = scoreToPoints(finalScore)
+  const scoreAsPoints = `${I18n.n(finalScoreAsPoints, {precision: 1})}`
   const scoreAsPercent = calculateGrade(finalScore, finalPossible)
 
   let finalGrade
@@ -437,7 +456,7 @@ function calculateTotals(calculatedGrades, currentOrFinal, groupWeightingScheme)
   if (!gradeChanged && overrideScorePresent()) {
     finalGrade = formatPercentGrade(ENV.effective_final_score)
     teaserText = scoreAsPoints
-  } else if (showTotalGradeAsPoints && groupWeightingScheme !== 'percent') {
+  } else if (showTotalGradeAsPoints) {
     finalGrade = scoreAsPoints
     teaserText = scoreAsPercent
   } else {

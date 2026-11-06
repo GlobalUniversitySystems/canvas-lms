@@ -34,6 +34,8 @@ import TopicView from './backbone/views/TopicView'
 import EntriesView from './backbone/views/EntriesView'
 import SectionsTooltip from '@canvas/sections-tooltip'
 import DiscussionTopicKeyboardShortcutModal from './react/DiscussionTopicKeyboardShortcutModal'
+import bindCreateSecondOpportunityButton from '@canvas/create-second-opportunity-button'
+import bindCreateNextMbmOpportunityButton from '@canvas/create-next-mbm-opportunity-button'
 import ready from '@instructure/ready'
 
 const I18n = useI18nScope('discussions')
@@ -94,6 +96,8 @@ ready(() => {
   }
 
   renderCoursePacingNotice()
+  bindCreateSecondOpportunityButton()
+  bindCreateNextMbmOpportunityButton()
 
   // Rendering of the section tooltip
   const container = document.querySelector('#section_tooltip_root')

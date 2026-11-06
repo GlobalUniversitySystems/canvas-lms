@@ -27,21 +27,103 @@ import {
   weightedPercent
 } from './GradeCalculationHelper'
 
-function combineAssignmentGroupGrades(assignmentGroupGrades, includeUngraded, options) {
-  const scopedAssignmentGroupGrades = _.map(assignmentGroupGrades, assignmentGroupGrade => {
-    const gradeVersion = includeUngraded ? assignmentGroupGrade.final : assignmentGroupGrade.current
-    return {...gradeVersion, weight: assignmentGroupGrade.assignmentGroupWeight}
+// For "Points (2026)" courses, a non-mandatory assignment group whose own
+// grade (on the 0-10 point scale) falls below this threshold is excluded
+// entirely from the course total grade calculation. It neither contributes
+// score/possible/weight nor triggers automatic course failure -- that is
+// reserved for mandatory groups.
+const NON_MANDATORY_GROUP_MIN_GRADE_BBA = 5.3
+
+function excludeFailingNonMandatoryGroups(groupGrades, options) {
+  if (options.gradeTypeName !== 'Points (2026)') {
+    return groupGrades
+  }
+
+  return groupGrades.filter(grade => {
+    if (grade.mandatory || !grade.possible) {
+      return true
+    }
+
+    const groupGradePoints = (grade.score / grade.possible) * 10
+    return groupGradePoints >= NON_MANDATORY_GROUP_MIN_GRADE_BBA
   })
+}
+
+function combineAssignmentGroupGrades(assignmentGroupGrades, includeUngraded, options) {
+  const mappedAssignmentGroupGrades = _.map(assignmentGroupGrades, assignmentGroupGrade => {
+    const gradeVersion = includeUngraded ? assignmentGroupGrade.final : assignmentGroupGrade.current
+    return {...gradeVersion, weight: assignmentGroupGrade.assignmentGroupWeight, mandatory: assignmentGroupGrade.mandatory}
+  })
+  const scopedAssignmentGroupGrades = excludeFailingNonMandatoryGroups(
+    mappedAssignmentGroupGrades,
+    options
+  )
 
   if (options.weightAssignmentGroups) {
     const relevantGroupGrades = scopedAssignmentGroupGrades.filter(grade => grade.possible)
     const fullWeight = sumBy(relevantGroupGrades, 'weight')
+    const hasFailed = !!relevantGroupGrades.find(elem => {
+      if (options.gradeTypeName === 'Competency') {
+        if (options.isModuleCategory === true) {
+          if (options.componentType === 'Enhancing') {
+            return false
+          }
+        }
+      }
+
+      if (options.gradeTypeName === 'Points (2026)' || options.gradeTypeName === 'Points MBM') {
+        if (!elem.mandatory) {
+          return false
+        }
+      }
+
+      const componentTotalScorePoints = +(elem.score / elem.possible * 10).toFixed(1)
+      const defaultLegacyFailPoint = 5.4
+
+      let failPoint = defaultLegacyFailPoint
+
+      if (options.gradeTypeName === 'Competency') {
+        if (options.isModuleCategory === false) {
+          let developing = options.gradePassingInfo['Developing']
+          if (developing !== undefined) {
+            failPoint = developing['end']
+          }
+        }
+      }
+
+      if (options.gradeTypeName === 'Points (2026)' || options.gradeTypeName === 'Points MBM') {
+        failPoint = options.passingGradeBBA
+      }
+
+      if (options.gradeTypeName === 'Points (2026)' || options.gradeTypeName === 'Points MBM') {
+        return elem.weight > 0 && componentTotalScorePoints < failPoint
+      } else {
+        return elem.weight > 0 && componentTotalScorePoints <= failPoint
+      }
+    })
+
+    const markEnhancingRed = !!relevantGroupGrades.find(elem => {
+      if (options.gradeTypeName === 'Competency') {
+        if (options.isModuleCategory === true) {
+          if (options.componentType === 'Enhancing') {
+            let developing = options.gradePassingInfo['Developing']
+            if (developing !== undefined) {
+              const componentTotalScorePoints = +(elem.score / elem.possible * 10).toFixed(1)
+
+              return elem.weight > 0 && componentTotalScorePoints <= developing['end']
+            }
+          }
+        }
+      }
+
+      return false
+    })
 
     let finalGrade = bigSum(_.map(relevantGroupGrades, weightedPercent))
-    if (fullWeight === 0) {
+    if (fullWeight === 0 || hasFailed) {
       finalGrade = null
     } else if (fullWeight < 100) {
-      finalGrade = toNumber(weightedPercent({score: finalGrade, possible: fullWeight, weight: 100}))
+        finalGrade = toNumber(weightedPercent({score: finalGrade, possible: fullWeight, weight: 100}))
     }
 
     const submissionCount = sumBy(relevantGroupGrades, 'submission_count')
@@ -342,9 +424,28 @@ function calculate(
   gradingPeriodSet,
   effectiveDueDates
 ) {
+  const agroupkeys = Object.keys(assignmentGroups)
+  let gradePassingInfo = {}
+  let componentType = ''
+  let gradeTypeName = ''
+  let isModuleCategory = false
+  let passingGradeBBA
+  if (agroupkeys.length > 0) {
+    gradePassingInfo = assignmentGroups[agroupkeys[0]].grade_passing_info
+    componentType = assignmentGroups[agroupkeys[0]].component_type
+    gradeTypeName = assignmentGroups[agroupkeys[0]].grade_type_name
+    isModuleCategory = assignmentGroups[agroupkeys[0]].is_module_category
+    passingGradeBBA = assignmentGroups[agroupkeys[0]].passing_grade
+  }
+
   const options = {
+    gradePassingInfo: gradePassingInfo,
+    componentType: componentType,
+    gradeTypeName: gradeTypeName,
+    isModuleCategory: isModuleCategory,
     weightGradingPeriods: gradingPeriodSet && !!gradingPeriodSet.weighted,
     weightAssignmentGroups: weightingScheme === 'percent',
+    passingGradeBBA: passingGradeBBA,
     ignoreUnpostedAnonymous
   }
 

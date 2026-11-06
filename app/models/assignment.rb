@@ -79,7 +79,7 @@ class Assignment < ActiveRecord::Base
     anonymous_instructor_annotations
   ].freeze
 
-  DEFAULT_POINTS_POSSIBLE = 0
+  DEFAULT_POINTS_POSSIBLE = 10
 
   attr_accessor :previous_id, :copying, :user_submitted, :grade_posting_in_progress, :unposted_anonymous_submissions
   attr_reader :assignment_changed, :posting_params_for_notifications
@@ -149,6 +149,56 @@ class Assignment < ActiveRecord::Base
   has_many :conditional_release_rules, class_name: "ConditionalRelease::Rule", dependent: :destroy, foreign_key: "trigger_assignment_id", inverse_of: :trigger_assignment
   has_many :conditional_release_associations, class_name: "ConditionalRelease::AssignmentSetAssociation", dependent: :destroy, inverse_of: :assignment
 
+  # "Second Opportunity" feature (mandatory AssignmentGroups under the
+  # "Points (2026)" grading scheme): bba_custom_opportunity marks which slot
+  # (1 = original/first, 2 = second opportunity) this assignment occupies
+  # within its assignment group.
+  SECOND_OPPORTUNITY_FIRST = 1
+  SECOND_OPPORTUNITY_SECOND = 2
+  SECOND_OPPORTUNITY_TITLE_SUFFIX = " Second Opportunity"
+
+  # "Points MBM" opportunity chain feature (every AssignmentGroup is
+  # mandatory under this grading scheme): mbm_opportunity_number marks
+  # which slot (1 = original, 2 = Second Opportunity, 3 = Resit) this
+  # assignment occupies within its assignment group. Separate column from
+  # bba_custom_opportunity above - a given assignment only ever populates
+  # one or the other, depending on which scheme its course uses.
+  MBM_FIRST_OPPORTUNITY = 1
+  MBM_SECOND_OPPORTUNITY = 2
+  MBM_THIRD_OPPORTUNITY = 3
+  MBM_OPPORTUNITY_TITLE_SUFFIXES = {
+    MBM_SECOND_OPPORTUNITY => " Second Opportunity",
+    MBM_THIRD_OPPORTUNITY => " Resit"
+  }.freeze
+
+  has_many :second_opportunities_created,
+           class_name: "AssignmentSecondOpportunity",
+           foreign_key: :first_assignment_id,
+           inverse_of: :first_assignment,
+           dependent: :destroy
+  has_one :second_opportunity_record,
+          class_name: "AssignmentSecondOpportunity",
+          foreign_key: :second_assignment_id,
+          inverse_of: :second_assignment,
+          dependent: :destroy
+
+  has_many :mbm_opportunities_created,
+           class_name: "AssignmentMbmOpportunity",
+           foreign_key: :parent_assignment_id,
+           inverse_of: :parent_assignment,
+           dependent: :destroy
+  has_one :mbm_opportunity_record,
+          class_name: "AssignmentMbmOpportunity",
+          foreign_key: :child_assignment_id,
+          inverse_of: :child_assignment,
+          dependent: :destroy
+
+  # Set by callers (e.g. controllers) right before calling #destroy so the
+  # correct user gets recorded on the AssignmentSecondOpportunity/
+  # AssignmentMbmOpportunity tracking record's deleted_by_id, regardless of
+  # which code path triggers deletion.
+  attr_accessor :deleted_by
+
   scope :assigned_to_student, ->(student_id) { joins(:submissions).where(submissions: { user_id: student_id }) }
   scope :anonymous, -> { where(anonymous_grading: true) }
   scope :moderated, -> { where(moderated_grading: true) }
@@ -177,6 +227,9 @@ class Assignment < ActiveRecord::Base
   validate :assignment_name_length_ok?, unless: :deleted?
   validate :annotatable_and_group_exclusivity_ok?
   validate :allowed_extensions_length_ok?
+  validate :enforce_second_opportunity_group_limit
+  validate :enforce_mandatory_points_omit_from_final_grade_lock
+  validate :enforce_points_mbm_group_limit
   validates :lti_context_id, presence: true, uniqueness: true
   validates :grader_count, numericality: true
   validates :allowed_attempts, numericality: { greater_than: 0 }, unless: proc { |a| a.allowed_attempts == -1 }, allow_nil: true
@@ -264,6 +317,649 @@ class Assignment < ActiveRecord::Base
                   end
     assignment_titles.union(wiki_titles)
   end
+
+  # --- "Second Opportunity" feature -------------------------------------
+
+  def self.second_opportunity_title_for(base_title)
+    base_title = base_title.to_s
+    suffix = SECOND_OPPORTUNITY_TITLE_SUFFIX
+    max = maximum_string_length
+    combined = "#{base_title}#{suffix}"
+    return combined if combined.length <= max
+
+    truncated_base_length = max - suffix.length
+    return combined[0, max] if truncated_base_length <= 0
+
+    "#{base_title[0, truncated_base_length]}#{suffix}"
+  end
+
+  def second_opportunity_eligible_group?
+    assignment_group&.mandatory_points_2026?
+  end
+
+  def first_opportunity?
+    bba_custom_opportunity == SECOND_OPPORTUNITY_FIRST
+  end
+
+  def second_opportunity?
+    bba_custom_opportunity == SECOND_OPPORTUNITY_SECOND
+  end
+
+  def second_opportunity_assignment
+    return nil unless first_opportunity?
+
+    assignment_group.assignments.active.find_by(bba_custom_opportunity: SECOND_OPPORTUNITY_SECOND)
+  end
+
+  # Called on the *first* opportunity assignment to create its paired
+  # second opportunity assignment/quiz/discussion. Only title,
+  # points_possible and grading_type are copied; everything else stays at
+  # defaults (no questions/content are duplicated - the teacher fills
+  # those in manually). The second opportunity is created with the same
+  # submission type as the first (plain assignment, quiz, or discussion),
+  # via #create_second_opportunity_plain_assignment!,
+  # #create_second_opportunity_quiz! or
+  # #create_second_opportunity_discussion_topic!. Also creates the
+  # audit-trail AssignmentSecondOpportunity record.
+  def create_second_opportunity!(created_by)
+    raise "Second opportunities can only be created for mandatory assignment groups using the Points (2026) grading scheme" unless second_opportunity_eligible_group?
+    raise "Only the first assignment in the group can create a second opportunity" unless first_opportunity?
+    raise "A second opportunity assignment already exists for this group" if second_opportunity_assignment.present?
+
+    second = nil
+    Assignment.transaction do
+      second = case submission_types
+               when "online_quiz"
+                 create_second_opportunity_quiz!
+               when "discussion_topic"
+                 create_second_opportunity_discussion_topic!(created_by)
+               else
+                 create_second_opportunity_plain_assignment!
+               end
+
+      AssignmentSecondOpportunity.create!(
+        first_assignment: self,
+        second_assignment: second,
+        assignment_group: assignment_group,
+        root_account_id: root_account_id,
+        created_by_id: created_by.is_a?(User) ? created_by.id : created_by
+      )
+    end
+    second
+  rescue ActiveRecord::RecordNotUnique
+    raise "A second opportunity assignment already exists for this group"
+  end
+
+  # Plain assignment second opportunity: just a bare Assignment record in
+  # the same group.
+  def create_second_opportunity_plain_assignment!
+    assignment_group.assignments.create!(
+      context: context,
+      title: Assignment.second_opportunity_title_for(title),
+      points_possible: points_possible,
+      grading_type: grading_type,
+      bba_custom_opportunity: SECOND_OPPORTUNITY_SECOND,
+      root_account_id: root_account_id
+    )
+  end
+  private :create_second_opportunity_plain_assignment!
+
+  # Quiz second opportunity: creates a new (empty, no questions) Quiz in
+  # the same group. Saving the quiz builds its paired Assignment via the
+  # Quiz model's own before_save callback; that paired assignment is what
+  # gets marked as the "second" opportunity and returned/tracked.
+  def create_second_opportunity_quiz!
+    quiz = context.quizzes.build(
+      title: Assignment.second_opportunity_title_for(title),
+      quiz_type: "assignment",
+      points_possible: points_possible,
+      assignment_group_id: assignment_group_id
+    )
+    quiz.save!
+
+    second = quiz.reload.assignment
+    raise "Failed to create the paired assignment for the second opportunity quiz" unless second
+
+    # Quiz's own before_save/after_save callbacks may have synced
+    # points_possible from its (empty) question set; force it back to
+    # match the first opportunity explicitly.
+    second.points_possible = points_possible
+    second.grading_type = grading_type
+    second.bba_custom_opportunity = SECOND_OPPORTUNITY_SECOND
+    second.save!
+    second
+  end
+  private :create_second_opportunity_quiz!
+
+  # Discussion second opportunity: creates a new (empty, no message)
+  # graded DiscussionTopic in the same group, paired with a fresh
+  # Assignment marked as the "second" opportunity.
+  def create_second_opportunity_discussion_topic!(created_by)
+    creator = created_by.is_a?(User) ? created_by : (User.find_by(id: created_by) if created_by)
+
+    topic_title = Assignment.second_opportunity_title_for(title)
+    topic = context.discussion_topics.build(title: topic_title, user: creator)
+
+    second = context.assignments.build(
+      title: topic_title,
+      points_possible: points_possible,
+      grading_type: grading_type,
+      submission_types: "discussion_topic",
+      assignment_group_id: assignment_group_id,
+      bba_custom_opportunity: SECOND_OPPORTUNITY_SECOND,
+      root_account_id: root_account_id
+    )
+
+    topic.assignment = second
+    topic.sync_assignment
+    topic.save_without_broadcasting!
+    second.save!
+    second
+  end
+  private :create_second_opportunity_discussion_topic!
+
+  # Turnitin (and other tools) can create assignments directly via LTI deep
+  # linking, bypassing the "+ Second Opportunity" button. When such a new
+  # assignment lands in a mandatory Points (2026) group that already has a
+  # first-opportunity assignment, it is automatically treated as that
+  # group's second opportunity. No-op (does not raise) if conditions
+  # aren't met, since this is called speculatively for any newly created
+  # assignment.
+  def auto_assign_second_opportunity!(created_by)
+    return if bba_custom_opportunity.present?
+    return unless second_opportunity_eligible_group?
+
+    first = assignment_group.assignments.active
+                             .where(bba_custom_opportunity: SECOND_OPPORTUNITY_FIRST)
+                             .where.not(id: id)
+                             .first
+    return unless first
+    return if assignment_group.assignments.active
+                               .where(bba_custom_opportunity: SECOND_OPPORTUNITY_SECOND)
+                               .where.not(id: id)
+                               .exists?
+
+    # LTI deep-linking callbacks (e.g. the Turnitin modal) may not have a
+    # @current_user available (cross-origin POST without the Canvas
+    # session cookie), so fall back to the default admin user so the
+    # required created_by_id is still populated.
+    creator_id = if created_by
+                   created_by.is_a?(User) ? created_by.id : created_by
+                 else
+                   User.find(1).id
+                 end
+
+    Assignment.transaction do
+      update!(
+        bba_custom_opportunity: SECOND_OPPORTUNITY_SECOND,
+        title: Assignment.second_opportunity_title_for(title)
+      )
+
+      AssignmentSecondOpportunity.create!(
+        first_assignment: first,
+        second_assignment: self,
+        assignment_group: assignment_group,
+        root_account_id: root_account_id,
+        created_by_id: creator_id
+      )
+    end
+  end
+
+  def enforce_second_opportunity_group_limit
+    return unless assignment_group
+    return unless assignment_group.mandatory_points_2026?
+    return if workflow_state == "deleted"
+    return unless new_record? || assignment_group_id_changed?
+    return if new_record? && omit_from_final_grade?
+
+    existing_count = assignment_group.assignments
+                                      .where.not(omit_from_final_grade: true)
+                                      .where.not(workflow_state: "deleted")
+                                      .where.not(id: id)
+                                      .count
+    return if existing_count < 2
+
+    errors.add(:base, I18n.t("This assignment group is limited to a maximum of 2 assignments."))
+  end
+
+  def enforce_mandatory_points_omit_from_final_grade_lock
+    return unless assignment_group
+    return unless assignment_group.mandatory_points_2026? || assignment_group.mandatory_points_mbm?
+    return unless omit_from_final_grade_changed?
+    return unless omit_from_final_grade_was && !omit_from_final_grade
+
+    errors.add(:omit_from_final_grade, I18n.t("cannot be changed back to false for assignments in this group."))
+  end
+
+  # Caps a "Points MBM" mandatory group at exactly `assignment_group.opportunity`
+  # gradeable assignments (1 or 3), ignoring omitted/deleted ones - the same
+  # shape as #enforce_second_opportunity_group_limit, but parameterized by
+  # the group's own cap instead of a hardcoded 2.
+  def enforce_points_mbm_group_limit
+    return unless assignment_group
+    return unless assignment_group.mandatory_points_mbm?
+    return if workflow_state == "deleted"
+    return unless new_record? || assignment_group_id_changed?
+    return if new_record? && omit_from_final_grade?
+
+    cap = assignment_group.opportunity || 1
+    existing_count = assignment_group.assignments
+                                      .where.not(omit_from_final_grade: true)
+                                      .where.not(workflow_state: "deleted")
+                                      .where.not(id: id)
+                                      .count
+    return if existing_count < cap
+
+    errors.add(:base, I18n.t("This assignment group is limited to a maximum of %{count} assignments.", count: cap))
+  end
+
+  # Automatically marks the first assignment created (via the normal/default
+  # creation flow) in an eligible mandatory group as opportunity #1. The
+  # second opportunity assignment is always created explicitly with
+  # bba_custom_opportunity already set via #create_second_opportunity!, so
+  # this is a no-op in that case.
+  def assign_first_opportunity_marker
+    return if bba_custom_opportunity.present?
+    return if omit_from_final_grade?
+    return unless second_opportunity_eligible_group?
+    return if assignment_group.assignments
+                               .where.not(workflow_state: "deleted")
+                               .where.not(bba_custom_opportunity: nil)
+                               .exists?
+
+    self.bba_custom_opportunity = SECOND_OPPORTUNITY_FIRST
+  end
+  private :assign_first_opportunity_marker
+
+  # Same as #assign_first_opportunity_marker, but for the "Points MBM"
+  # opportunity chain: marks the first assignment created in an eligible
+  # group as mbm_opportunity_number 1. Slots 2/3 are always created
+  # explicitly via #create_next_mbm_opportunity!, so this is a no-op then.
+  def assign_first_mbm_opportunity_marker
+    return if mbm_opportunity_number.present?
+    return if omit_from_final_grade?
+    return unless points_mbm_eligible_group?
+    return if assignment_group.assignments
+                               .where.not(workflow_state: "deleted")
+                               .where.not(mbm_opportunity_number: nil)
+                               .exists?
+
+    self.mbm_opportunity_number = MBM_FIRST_OPPORTUNITY
+  end
+  private :assign_first_mbm_opportunity_marker
+
+  # If the first opportunity assignment is deleted, its paired second
+  # opportunity assignment is soft-deleted as well.
+  def cascade_destroy_second_opportunity
+    return unless first_opportunity?
+
+    second = second_opportunity_assignment
+    return unless second
+
+    second.deleted_by = deleted_by
+    second.destroy
+  end
+  private :cascade_destroy_second_opportunity
+
+  # Whenever a second opportunity assignment is deleted -- through any code
+  # path (explicit delete, cascade from the first assignment being deleted,
+  # bulk delete, group destroy, blueprint sync, etc.) -- mark its tracking
+  # record as deleted.
+  def mark_second_opportunity_tracking_deleted
+    return unless second_opportunity?
+
+    record = AssignmentSecondOpportunity.active.find_by(second_assignment_id: id)
+    return unless record
+
+    deleter_id = deleted_by.is_a?(User) ? deleted_by.id : deleted_by
+    record.mark_deleted!(deleted_by_id: deleter_id)
+  end
+  private :mark_second_opportunity_tracking_deleted
+
+  # Keeps the second opportunity assignment's title in sync with the first
+  # opportunity assignment's title.
+  def sync_second_opportunity_title
+    return unless first_opportunity?
+
+    second = second_opportunity_assignment
+    return unless second
+
+    new_title = Assignment.second_opportunity_title_for(title)
+    second.update_column(:title, new_title) if second.title != new_title
+  end
+  private :sync_second_opportunity_title
+
+  # When a deleted second opportunity assignment is restored (e.g. via
+  # Assignment#restore or AssignmentGroup#restore), the old tracking record
+  # stays deleted -- a brand new AssignmentSecondOpportunity row is always
+  # created instead, preserving full history across create/delete cycles.
+  def recreate_second_opportunity_tracking_if_restored
+    return unless second_opportunity?
+    return unless assignment_group
+
+    first = assignment_group.assignments.active.find_by(bba_custom_opportunity: SECOND_OPPORTUNITY_FIRST)
+    return unless first
+
+    last_record = AssignmentSecondOpportunity.where(second_assignment_id: id).order(created_at: :desc).first
+    created_by_id = last_record&.created_by_id
+    return unless created_by_id
+
+    AssignmentSecondOpportunity.create!(
+      first_assignment: first,
+      second_assignment: self,
+      assignment_group: assignment_group,
+      root_account_id: root_account_id,
+      created_by_id: created_by_id
+    )
+  end
+  private :recreate_second_opportunity_tracking_if_restored
+
+  def restored_from_deleted_second_opportunity?
+    return false unless second_opportunity?
+
+    change = saved_change_to_workflow_state
+    change.present? && change[0] == "deleted" && change[1] != "deleted"
+  end
+  private :restored_from_deleted_second_opportunity?
+
+  # --- "Points MBM" opportunity chain feature ---------------------------
+  # Generalizes the "Second Opportunity" feature above into a 1-to-3-slot
+  # chain (original -> Second Opportunity -> Resit). See
+  # doc/points_mbm_grading_scheme.md for the full data model/mechanics.
+
+  def self.mbm_opportunity_title_for(base_title, opportunity_number)
+    base_title = base_title.to_s
+    suffix = MBM_OPPORTUNITY_TITLE_SUFFIXES.fetch(opportunity_number)
+    max = maximum_string_length
+    combined = "#{base_title}#{suffix}"
+    return combined if combined.length <= max
+
+    truncated_base_length = max - suffix.length
+    return combined[0, max] if truncated_base_length <= 0
+
+    "#{base_title[0, truncated_base_length]}#{suffix}"
+  end
+
+  def points_mbm_eligible_group?
+    assignment_group&.mandatory_points_mbm?
+  end
+
+  def mbm_first_opportunity?
+    mbm_opportunity_number == MBM_FIRST_OPPORTUNITY
+  end
+
+  def mbm_second_opportunity?
+    mbm_opportunity_number == MBM_SECOND_OPPORTUNITY
+  end
+
+  def mbm_third_opportunity?
+    mbm_opportunity_number == MBM_THIRD_OPPORTUNITY
+  end
+
+  # The assignment occupying mbm_opportunity_number + 1 in the same group,
+  # if it already exists. Only meaningful when called on slot 1 or 2 (slot
+  # 3/Resit is always terminal - there is no slot 4).
+  def mbm_next_opportunity_assignment
+    return nil unless mbm_opportunity_number.present? && mbm_opportunity_number < MBM_THIRD_OPPORTUNITY
+
+    assignment_group.assignments.active.find_by(mbm_opportunity_number: mbm_opportunity_number + 1)
+  end
+
+  # The label to show on the "Create Second Opportunity" / "Create Resit"
+  # button when it's rendered on *this* assignment's show page, or nil if
+  # this assignment isn't eligible to create a next opportunity at all.
+  def mbm_next_opportunity_label
+    return nil unless mbm_first_opportunity? || mbm_second_opportunity?
+
+    mbm_second_opportunity? ? I18n.t("Create Resit") : I18n.t("Create Second Opportunity")
+  end
+
+  # The unsuffixed title that Second Opportunity/Resit titles are derived
+  # from: always the *original* (slot 1) assignment's title, never the
+  # Second Opportunity assignment's own (already-suffixed) title - so Resit
+  # is always "<original> Resit", never "<original> Second Opportunity Resit".
+  def mbm_base_opportunity_title
+    return title if mbm_first_opportunity?
+
+    root = assignment_group.assignments.active.find_by(mbm_opportunity_number: MBM_FIRST_OPPORTUNITY)
+    root&.title || title
+  end
+
+  # Called on the *first or second* opportunity assignment to create the
+  # next assignment/quiz/discussion in the chain. Only title, points_possible
+  # and grading_type are copied; everything else stays at defaults (no
+  # questions/content are duplicated - the teacher fills those in manually).
+  # Also creates the audit-trail AssignmentMbmOpportunity record.
+  def create_next_mbm_opportunity!(created_by)
+    raise "The next opportunity can only be created for mandatory assignment groups using the Points MBM grading scheme" unless points_mbm_eligible_group?
+    raise "Only the first or second opportunity assignment in the group can create the next opportunity" unless mbm_first_opportunity? || mbm_second_opportunity?
+    raise "This assignment group does not allow a third opportunity (Resit)" unless assignment_group.opportunity == MBM_THIRD_OPPORTUNITY
+    raise "The next opportunity assignment already exists for this group" if mbm_next_opportunity_assignment.present?
+
+    next_number = mbm_opportunity_number + 1
+    next_title = Assignment.mbm_opportunity_title_for(mbm_base_opportunity_title, next_number)
+
+    next_assignment = nil
+    Assignment.transaction do
+      next_assignment = case submission_types
+                         when "online_quiz"
+                           create_mbm_opportunity_quiz!(next_title, next_number)
+                         when "discussion_topic"
+                           create_mbm_opportunity_discussion_topic!(next_title, next_number, created_by)
+                         else
+                           create_mbm_opportunity_plain_assignment!(next_title, next_number)
+                         end
+
+      AssignmentMbmOpportunity.create!(
+        parent_assignment: self,
+        child_assignment: next_assignment,
+        assignment_group: assignment_group,
+        opportunity_number: next_number,
+        root_account_id: root_account_id,
+        created_by_id: created_by.is_a?(User) ? created_by.id : created_by
+      )
+    end
+    next_assignment
+  rescue ActiveRecord::RecordNotUnique
+    raise "The next opportunity assignment already exists for this group"
+  end
+
+  # Plain assignment opportunity: just a bare Assignment record in the same
+  # group.
+  def create_mbm_opportunity_plain_assignment!(next_title, next_number)
+    assignment_group.assignments.create!(
+      context: context,
+      title: next_title,
+      points_possible: points_possible,
+      grading_type: grading_type,
+      mbm_opportunity_number: next_number,
+      root_account_id: root_account_id
+    )
+  end
+  private :create_mbm_opportunity_plain_assignment!
+
+  # Quiz opportunity: creates a new (empty, no questions) Quiz in the same
+  # group. Saving the quiz builds its paired Assignment via the Quiz
+  # model's own before_save callback; that paired assignment is what gets
+  # marked with the opportunity number and returned/tracked.
+  def create_mbm_opportunity_quiz!(next_title, next_number)
+    quiz = context.quizzes.build(
+      title: next_title,
+      quiz_type: "assignment",
+      points_possible: points_possible,
+      assignment_group_id: assignment_group_id
+    )
+    quiz.save!
+
+    next_assignment = quiz.reload.assignment
+    raise "Failed to create the paired assignment for the next opportunity quiz" unless next_assignment
+
+    # Quiz's own before_save/after_save callbacks may have synced
+    # points_possible from its (empty) question set; force it back to
+    # match explicitly.
+    next_assignment.points_possible = points_possible
+    next_assignment.grading_type = grading_type
+    next_assignment.mbm_opportunity_number = next_number
+    next_assignment.save!
+    next_assignment
+  end
+  private :create_mbm_opportunity_quiz!
+
+  # Discussion opportunity: creates a new (empty, no message) graded
+  # DiscussionTopic in the same group, paired with a fresh Assignment
+  # marked with the opportunity number.
+  def create_mbm_opportunity_discussion_topic!(next_title, next_number, created_by)
+    creator = created_by.is_a?(User) ? created_by : (User.find_by(id: created_by) if created_by)
+
+    topic = context.discussion_topics.build(title: next_title, user: creator)
+
+    next_assignment = context.assignments.build(
+      title: next_title,
+      points_possible: points_possible,
+      grading_type: grading_type,
+      submission_types: "discussion_topic",
+      assignment_group_id: assignment_group_id,
+      mbm_opportunity_number: next_number,
+      root_account_id: root_account_id
+    )
+
+    topic.assignment = next_assignment
+    topic.sync_assignment
+    topic.save_without_broadcasting!
+    next_assignment.save!
+    next_assignment
+  end
+  private :create_mbm_opportunity_discussion_topic!
+
+  # Turnitin (and other tools) can create assignments directly via LTI deep
+  # linking, bypassing the "+ Create Second Opportunity"/"+ Create Resit"
+  # buttons. When such a new assignment lands in an eligible Points MBM
+  # group, it is automatically slotted into the next empty opportunity
+  # number (2, then 3). No-op (does not raise) if conditions aren't met,
+  # since this is called speculatively for any newly created assignment.
+  def auto_assign_next_mbm_opportunity!(created_by)
+    return if mbm_opportunity_number.present?
+    return unless points_mbm_eligible_group?
+
+    existing = assignment_group.assignments.active
+                                .where.not(id: id)
+                                .where.not(mbm_opportunity_number: nil)
+                                .index_by(&:mbm_opportunity_number)
+    return if existing.blank?
+
+    next_number = (existing.keys.max || 0) + 1
+    return unless [MBM_SECOND_OPPORTUNITY, MBM_THIRD_OPPORTUNITY].include?(next_number)
+    return unless assignment_group.opportunity == MBM_THIRD_OPPORTUNITY
+
+    parent = existing[next_number - 1]
+    return unless parent
+
+    # LTI deep-linking callbacks (e.g. the Turnitin modal) may not have a
+    # @current_user available (cross-origin POST without the Canvas
+    # session cookie), so fall back to the default admin user so the
+    # required created_by_id is still populated.
+    creator_id = if created_by
+                   created_by.is_a?(User) ? created_by.id : created_by
+                 else
+                   User.find(1).id
+                 end
+
+    Assignment.transaction do
+      update!(
+        mbm_opportunity_number: next_number,
+        title: Assignment.mbm_opportunity_title_for(parent.mbm_base_opportunity_title, next_number)
+      )
+
+      AssignmentMbmOpportunity.create!(
+        parent_assignment: parent,
+        child_assignment: self,
+        assignment_group: assignment_group,
+        opportunity_number: next_number,
+        root_account_id: root_account_id,
+        created_by_id: creator_id
+      )
+    end
+  end
+
+  # If the first (or second) opportunity assignment is deleted, every
+  # opportunity assignment after it in the chain is soft-deleted as well
+  # (transitively - destroying slot 1 cascades to slot 2, which in turn
+  # cascades to slot 3 via this same callback re-firing on that destroy).
+  def cascade_destroy_mbm_opportunity
+    return unless mbm_first_opportunity? || mbm_second_opportunity?
+
+    next_assignment = mbm_next_opportunity_assignment
+    return unless next_assignment
+
+    next_assignment.deleted_by = deleted_by
+    next_assignment.destroy
+  end
+  private :cascade_destroy_mbm_opportunity
+
+  # Whenever a Second Opportunity/Resit assignment is deleted -- through
+  # any code path (explicit delete, cascade from an earlier assignment
+  # being deleted, bulk delete, group destroy, blueprint sync, etc.) --
+  # mark its tracking record as deleted.
+  def mark_mbm_opportunity_tracking_deleted
+    return if mbm_first_opportunity? || mbm_opportunity_number.blank?
+
+    record = AssignmentMbmOpportunity.active.find_by(child_assignment_id: id)
+    return unless record
+
+    deleter_id = deleted_by.is_a?(User) ? deleted_by.id : deleted_by
+    record.mark_deleted!(deleted_by_id: deleter_id)
+  end
+  private :mark_mbm_opportunity_tracking_deleted
+
+  # Keeps the Second Opportunity/Resit assignment titles in sync with the
+  # first opportunity assignment's title.
+  def sync_mbm_opportunity_titles
+    return unless mbm_first_opportunity?
+
+    [MBM_SECOND_OPPORTUNITY, MBM_THIRD_OPPORTUNITY].each do |opportunity_number|
+      sibling = assignment_group.assignments.active.find_by(mbm_opportunity_number: opportunity_number)
+      next unless sibling
+
+      new_title = Assignment.mbm_opportunity_title_for(title, opportunity_number)
+      sibling.update_column(:title, new_title) if sibling.title != new_title
+    end
+  end
+  private :sync_mbm_opportunity_titles
+
+  # When a deleted Second Opportunity/Resit assignment is restored (e.g.
+  # via Assignment#restore or AssignmentGroup#restore), the old tracking
+  # record stays deleted -- a brand new AssignmentMbmOpportunity row is
+  # always created instead, preserving full history across create/delete
+  # cycles.
+  def recreate_mbm_opportunity_tracking_if_restored
+    return if mbm_first_opportunity? || mbm_opportunity_number.blank?
+    return unless assignment_group
+
+    parent = assignment_group.assignments.active.find_by(mbm_opportunity_number: mbm_opportunity_number - 1)
+    return unless parent
+
+    last_record = AssignmentMbmOpportunity.where(child_assignment_id: id).order(created_at: :desc).first
+    created_by_id = last_record&.created_by_id
+    return unless created_by_id
+
+    AssignmentMbmOpportunity.create!(
+      parent_assignment: parent,
+      child_assignment: self,
+      assignment_group: assignment_group,
+      opportunity_number: mbm_opportunity_number,
+      root_account_id: root_account_id,
+      created_by_id: created_by_id
+    )
+  end
+  private :recreate_mbm_opportunity_tracking_if_restored
+
+  def restored_from_deleted_mbm_opportunity?
+    return false if mbm_first_opportunity? || mbm_opportunity_number.blank?
+
+    change = saved_change_to_workflow_state
+    change.present? && change[0] == "deleted" && change[1] != "deleted"
+  end
+  private :restored_from_deleted_mbm_opportunity?
 
   # The relevant associations that are copied are:
   #
@@ -570,12 +1266,23 @@ class Assignment < ActiveRecord::Base
               :mute_if_changed_to_moderated
 
   before_destroy :delete_observer_alerts
+  before_destroy :cascade_destroy_second_opportunity
+  after_destroy :mark_second_opportunity_tracking_deleted
+  before_destroy :cascade_destroy_mbm_opportunity
+  after_destroy :mark_mbm_opportunity_tracking_deleted
 
   def delete_observer_alerts
     until observer_alerts.limit(1_000).delete_all < 1_000; end
   end
 
   before_create :set_root_account_id, :set_muted
+  before_create :assign_first_opportunity_marker
+  before_create :assign_first_mbm_opportunity_marker
+
+  after_update :sync_second_opportunity_title, if: :saved_change_to_title?
+  after_save :recreate_second_opportunity_tracking_if_restored, if: :restored_from_deleted_second_opportunity?
+  after_update :sync_mbm_opportunity_titles, if: :saved_change_to_title?
+  after_save :recreate_mbm_opportunity_tracking_if_restored, if: :restored_from_deleted_mbm_opportunity?
 
   after_save  :update_submissions_and_grades_if_details_changed,
               :update_grading_period_grades,
@@ -1333,6 +2040,13 @@ class Assignment < ActiveRecord::Base
 
   alias_method :destroy_permanently!, :destroy
   def destroy
+    # NOTE: this overridden `destroy` completely shadows ActiveRecord's
+    # before_destroy/after_destroy callback chain (it never calls super or
+    # runs the :destroy callbacks), so any "Second Opportunity" cascade /
+    # tracking logic must be invoked explicitly here rather than via
+    # before_destroy/after_destroy.
+    cascade_destroy_second_opportunity
+
     self.workflow_state = "deleted"
     ContentTag.delete_for(self)
     rubric_association.destroy if active_rubric_association?
@@ -1345,6 +2059,8 @@ class Assignment < ActiveRecord::Base
 
     ScheduledSmartAlert.where(context_type: "Assignment", context_id: id).destroy_all
     ScheduledSmartAlert.where(context_type: "AssignmentOverride", context_id: assignment_override_ids).destroy_all
+
+    mark_second_opportunity_tracking_deleted
   end
 
   def refresh_course_content_participation_counts

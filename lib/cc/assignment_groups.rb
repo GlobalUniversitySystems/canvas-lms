@@ -38,13 +38,15 @@ module CC
         "xsi:schemaLocation" => "#{CCHelper::CANVAS_NAMESPACE} #{CCHelper::XSD_URI}"
       ) do |groups_node|
         @course.assignment_groups.active.each do |group|
-          next unless export_object?(group)
+          # next unless export_object?(group)
 
           add_exported_asset(group)
 
           migration_id = create_key(group)
           groups_node.assignmentGroup(identifier: migration_id) do |group_node|
             group_node.title group.name
+            group_node.component_type group.component_type
+            group_node.mandatory group.mandatory
             group_node.position group.position
             group_node.group_weight group.group_weight if group.group_weight
             unless group.rules.blank?

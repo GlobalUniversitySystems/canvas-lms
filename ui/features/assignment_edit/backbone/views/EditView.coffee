@@ -720,6 +720,7 @@ export default class EditView extends ValidatedFormView
       lockedItems: @lockedItems
       anonymousGradingEnabled: ENV?.ANONYMOUS_GRADING_ENABLED or false
       anonymousInstructorAnnotationsEnabled: ENV?.ANONYMOUS_INSTRUCTOR_ANNOTATIONS_ENABLED or false
+      ENV: ENV
 
   _attachEditorToDescription: =>
     return if @lockedItems.content

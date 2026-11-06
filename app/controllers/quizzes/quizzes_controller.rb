@@ -221,6 +221,27 @@ class Quizzes::QuizzesController < ApplicationController
       @assignment = @quiz.assignment
       @assignment = @assignment.overridden_for(@current_user) if @assignment
 
+      # "Second Opportunity" button (Points (2026) mandatory groups): only
+      # usable from the *first* opportunity quiz, when no second
+      # opportunity has been created yet.
+      @can_create_second_opportunity = @assignment.present? &&
+                                        @assignment.second_opportunity_eligible_group? &&
+                                        @assignment.first_opportunity? &&
+                                        @assignment.second_opportunity_assignment.blank? &&
+                                        can_do(@assignment.assignment_group, @current_user, :create)
+
+      # "Create Second Opportunity"/"Create Resit" button (Points MBM
+      # mandatory groups): usable from the first or second opportunity
+      # quiz, when the group allows 3 opportunities and the next slot is
+      # still empty.
+      @can_create_next_mbm_opportunity = @assignment.present? &&
+                                          @assignment.points_mbm_eligible_group? &&
+                                          (@assignment.mbm_first_opportunity? || @assignment.mbm_second_opportunity?) &&
+                                          @assignment.assignment_group.opportunity == Assignment::MBM_THIRD_OPPORTUNITY &&
+                                          @assignment.mbm_next_opportunity_assignment.blank? &&
+                                          can_do(@assignment.assignment_group, @current_user, :create)
+      @next_mbm_opportunity_label = @assignment&.mbm_next_opportunity_label
+
       @submission = get_submission
 
       @just_graded = false

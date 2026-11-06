@@ -308,6 +308,9 @@ class AssignmentGroupsController < ApplicationController
                            :position,
                            :rules,
                            :sis_source_id,
+                           :component_type,
+                           :mandatory,
+                           :opportunity,
                            integration_data: strong_anything)
     result[:integration_data] = nil if result[:integration_data] == ""
     result

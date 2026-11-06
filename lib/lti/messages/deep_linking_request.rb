@@ -159,7 +159,8 @@ module Lti::Messages
       {
         modal: MODAL_PLACEMENTS.include?(placement),
         placement: placement,
-        context_module_id: @opts[:context_module_id]
+        context_module_id: @opts[:context_module_id],
+        assignment_group_id: @opts[:assignment_group_id]
       }.compact
     end
   end

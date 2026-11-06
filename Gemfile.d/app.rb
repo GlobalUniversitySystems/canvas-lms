@@ -34,6 +34,7 @@ gem_override "switchman", "3.1.1"
 gem_override "switchman-inst-jobs", "4.0.8"
   gem "irb", "1.4.1"
   gem "open4", "1.3.4", require: false
+gem "concurrent-ruby", "1.3.4"
 
 gem "academic_benchmarks", "1.1.2", require: false
 gem "active_model-better_errors", "1.6.7", require: "active_model/better_errors"
@@ -77,7 +78,7 @@ gem "hashery", "2.1.2", require: false
 gem "highline", "2.0.3", require: false
 gem "httparty", "0.18.1"
 gem "i18n", "1.8.5"
-gem "i18nliner", "0.1.2", github: "instructure/i18nliner", ref: "rails-61"
+gem "i18nliner", "0.1.2", github: "kavalenka/instructure.i18nliner.ref.rails-61"
   gem "ruby2ruby", "2.4.4", require: false
   gem "ruby_parser", "3.18.1", require: false
 gem "icalendar", "2.7.0", require: false

@@ -24,12 +24,16 @@ import '@canvas/message-students-dialog/jquery/message_students'
 import '@canvas/jquery/jquery.disableWhileLoading'
 import '@canvas/module-sequence-footer'
 import LockManager from '@canvas/blueprint-courses/react/components/LockManager/index'
+import bindCreateSecondOpportunityButton from '@canvas/create-second-opportunity-button'
+import bindCreateNextMbmOpportunityButton from '@canvas/create-next-mbm-opportunity-button'
 import ready from '@instructure/ready'
 
 ready(() => {
   const lockManager = new LockManager()
   lockManager.init({itemType: 'quiz', page: 'show'})
   renderCoursePacingNotice()
+  bindCreateSecondOpportunityButton()
+  bindCreateNextMbmOpportunityButton()
 
   inputMethods.setWidths()
   $('.answer input[type=text]').each(function () {

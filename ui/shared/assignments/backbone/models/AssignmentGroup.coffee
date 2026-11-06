@@ -86,3 +86,18 @@ export default class AssignmentGroup extends Backbone.Model
 
   hasIntegrationData: ->
     !_.isEmpty(@get('integration_data')) || !_.isEmpty(@get('sis_source_id'))
+
+  componentType: ->
+    @get('component_type') || ''
+
+  isModuleCategory: ->
+    @get('is_module_category') || false
+
+  passingGradeBBA: ->
+    @get('passing_grade') || ''
+
+  gradeTypeName: ->
+    @get('grade_type_name') || ''
+
+  gradePassingInfo: ->
+    @get('grade_passing_info') || {}

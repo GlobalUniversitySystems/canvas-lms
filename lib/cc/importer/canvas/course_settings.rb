@@ -124,6 +124,8 @@ module CC::Importer::Canvas
         group = {}
         group["migration_id"] = node["identifier"]
         group["title"] = get_node_val(node, "title")
+        group["component_type"] = get_node_val(node, "component_type")
+        group["mandatory"] = get_bool_val(node, "mandatory", false)
         group["position"] = get_int_val(node, "position")
         group["group_weight"] = get_float_val(node, "group_weight")
         group["rules"] = []

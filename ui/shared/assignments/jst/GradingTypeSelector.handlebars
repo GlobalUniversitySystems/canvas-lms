@@ -9,29 +9,29 @@
     <input type="text" id="assignment_grading_type" readonly value="{{lookup gradingTypeMap gradingType}}"/>
     <input type="hidden" name="{{#if nested}}assignment[grading_type]{{else}}grading_type{{/if}}" value="{{gradingType}}"/>
   {{else}}
-    <select id="assignment_grading_type"
+    <select id="assignment_grading_type" readonly
       name="{{#if nested}}assignment[grading_type]{{else}}grading_type{{/if}}"
       aria-controls="graded_assignment_fields view-grading-levels">
-      <option value="percent" {{selectedIf gradingType "percent"}}>
-        {{gradingTypeMap.percent}}
-      </option>
-      <option value="pass_fail" {{selectedIf gradingType "pass_fail" }}>
-        {{gradingTypeMap.pass_fail}}
-      </option>
+{{!--       <option value="percent" {{selectedIf gradingType "percent"}}> --}}
+{{!--         {{gradingTypeMap.percent}} --}}
+{{!--       </option> --}}
+{{!--       <option value="pass_fail" {{selectedIf gradingType "pass_fail" }}> --}}
+{{!--         {{gradingTypeMap.pass_fail}} --}}
+{{!--       </option> --}}
       <option value="points" {{selectedIf gradingType "points"}}>
         {{gradingTypeMap.points}}
       </option>
-      <option value="letter_grade" {{selectedIf gradingType "letter_grade"}}>
-        {{gradingTypeMap.letter_grade}}
-      </option>
-      <option value="gpa_scale" {{selectedIf gradingType "gpa_scale"}}>
-        {{gradingTypeMap.gpa_scale}}
-      </option>
-      {{#unless preventNotGraded}}
-        <option value="not_graded" {{selectedIf isNotGraded}}>
-          {{gradingTypeMap.not_graded}}
-        </option>
-      {{/unless}}
+{{!--       <option value="letter_grade" {{selectedIf gradingType "letter_grade"}}> --}}
+{{!--         {{gradingTypeMap.letter_grade}} --}}
+{{!--       </option> --}}
+{{!--       <option value="gpa_scale" {{selectedIf gradingType "gpa_scale"}}> --}}
+{{!--         {{gradingTypeMap.gpa_scale}} --}}
+{{!--       </option> --}}
+{{!--       {{#unless preventNotGraded}} --}}
+{{!--         <option value="not_graded" {{selectedIf isNotGraded}}> --}}
+{{!--           {{gradingTypeMap.not_graded}} --}}
+{{!--         </option> --}}
+{{!--       {{/unless}} --}}
     </select>
   {{/if}}
   <a id=gpa-scale-question

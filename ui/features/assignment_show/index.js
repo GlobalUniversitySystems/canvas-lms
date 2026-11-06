@@ -37,6 +37,8 @@ import SpeedGraderLink from '@canvas/speed-grader-link'
 import DirectShareUserModal from '@canvas/direct-sharing/react/components/DirectShareUserModal'
 import DirectShareCourseTray from '@canvas/direct-sharing/react/components/DirectShareCourseTray'
 import {setupSubmitHandler} from '@canvas/assignments/jquery/reuploadSubmissionsHelper'
+import bindCreateSecondOpportunityButton from '@canvas/create-second-opportunity-button'
+import bindCreateNextMbmOpportunityButton from '@canvas/create-next-mbm-opportunity-button'
 import ready from '@instructure/ready'
 import {monitorLtiMessages} from '@canvas/lti/jquery/messages'
 
@@ -292,3 +294,9 @@ ready(() => {
     $('#accessibility_warning').addClass('screenreader-only')
   })
 })
+
+$(() => {
+  bindCreateSecondOpportunityButton()
+  bindCreateNextMbmOpportunityButton()
+})
+

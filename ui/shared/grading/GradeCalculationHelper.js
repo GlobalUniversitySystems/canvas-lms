@@ -58,6 +58,15 @@ export function scoreToPercentage(score, pointsPossible) {
   return toNumber(multiply(divide(score, pointsPossible), 100))
 }
 
+export function scoreToPoints(score) {
+  const floatingPointResult = score / 10
+  if (!Number.isFinite(floatingPointResult)) {
+    return floatingPointResult
+  }
+
+  return toNumber(divide(score, 10))
+}
+
 export function weightedPercent({score, possible, weight}) {
   return score && weight && possible ? Big(score).div(possible).times(weight) : Big(0)
 }

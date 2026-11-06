@@ -54,16 +54,44 @@ class AssignmentGroup < ActiveRecord::Base
   validates :rules, length: { maximum: maximum_text_length }, allow_blank: true
   validates :default_assignment_name, length: { maximum: maximum_string_length }, allow_nil: true
   validates :name, length: { maximum: maximum_string_length }, allow_nil: true
+  validates :opportunity, inclusion: { in: [1, 3] }, allow_nil: true, if: :points_mbm_course?
+
+  has_many :assignment_second_opportunities, dependent: :destroy
+  has_many :assignment_mbm_opportunities, dependent: :destroy
 
   before_create :set_root_account_id
   before_save :set_context_code
   before_save :generate_default_values
+  before_save :force_mandatory_for_points_mbm
   after_save :course_grading_change
   after_save :touch_context
   after_save :update_student_grades
+  after_save :fetch_component_type_from_master
+  after_create :fetch_mandatory_from_master
+  after_create :fetch_opportunity_from_master
 
   before_destroy :destroy_scores
   after_destroy :clear_context_has_assignment_group_cache
+
+  # Whether this group is subject to the "Second Opportunity" assignment
+  # feature: the group is flagged mandatory and the course uses the
+  # "Points (2026)" grading scheme.
+  def mandatory_points_2026?
+    mandatory? && context.is_a?(Course) && context.grade_type_name == "Points (2026)"
+  end
+
+  # Whether this group is subject to the "Points MBM" opportunity chain
+  # (Second Opportunity / Resit) feature. Unlike Points (2026), every
+  # assignment group under "Points MBM" is mandatory (see
+  # #force_mandatory_for_points_mbm), so this is effectively just the
+  # grade_type_name check, plus the mandatory? guard for defensiveness.
+  def mandatory_points_mbm?
+    mandatory? && points_mbm_course?
+  end
+
+  def points_mbm_course?
+    context.is_a?(Course) && context.grade_type_name == "Points MBM"
+  end
 
   def generate_default_values
     if name.blank?
@@ -82,6 +110,51 @@ class AssignmentGroup < ActiveRecord::Base
     if (saved_change_to_rules? || saved_change_to_group_weight?) && saved_by != :migration
       self.class.connection.after_transaction_commit { context.recompute_student_scores }
     end
+  end
+
+  def fetch_component_type_from_master
+    return if self.component_type.present?
+
+    master_course = context&.master_course_subscriptions&.active&.first&.master_template&.course
+    return unless master_course
+
+    ct = master_course.assignment_groups&.find_by(name: self.name)&.component_type
+    return unless ct
+
+    self.update_columns(component_type: ct)
+  end
+
+  def fetch_mandatory_from_master
+    master_course = context&.master_course_subscriptions&.active&.first&.master_template&.course
+    return unless master_course
+
+    m = master_course.assignment_groups&.find_by(name: self.name)&.mandatory
+    return if m.nil?
+
+    self.update_columns(mandatory: m)
+  end
+
+  # Every assignment group under "Points MBM" is mandatory (unlike
+  # Points (2026), where it's an independently set per-group flag) - force
+  # the column so scheme-agnostic helpers like Course#any_mandatory_ag_failed?
+  # keep working unchanged.
+  def force_mandatory_for_points_mbm
+    self.mandatory = true if points_mbm_course?
+  end
+  protected :force_mandatory_for_points_mbm
+
+  # Synced from the blueprint/master course once, at creation time only
+  # (matched by group name) - same timing as #fetch_mandatory_from_master.
+  # Later changes to the master's `opportunity` value are not resynced to
+  # already-created child groups.
+  def fetch_opportunity_from_master
+    master_course = context&.master_course_subscriptions&.active&.first&.master_template&.course
+    return unless master_course
+
+    o = master_course.assignment_groups&.find_by(name: self.name)&.opportunity
+    return if o.nil?
+
+    self.update_columns(opportunity: o)
   end
 
   def set_context_code
@@ -179,6 +252,10 @@ class AssignmentGroup < ActiveRecord::Base
 
   def points_possible
     assignments.reduce(0) { |sum, assignment| sum + (assignment.points_possible || 0) }
+  end
+
+  def points_possible_for_not_deleted_assignments
+    assignments.where.not(workflow_state: "deleted").where(omit_from_final_grade: false).reduce(0) { |sum, assignment| sum + (assignment.points_possible || 0) }
   end
 
   scope :include_active_assignments, -> { preload(:active_assignments) }

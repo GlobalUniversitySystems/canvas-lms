@@ -62,6 +62,7 @@ const SCC_QUERY = gql`
       ... on User {
         _id
         pronouns
+        ilp
         short_name: shortName
         avatar_url: avatarUrl
         enrollments(courseId: $courseId) {

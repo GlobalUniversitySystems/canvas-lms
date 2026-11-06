@@ -140,6 +140,28 @@
         </a>
         <% end %>
 
+        <% if @can_create_second_opportunity %>
+          <button
+            id="create_second_opportunity_button"
+            type="button"
+            class="btn"
+            data-url="<%= course_assignment_create_second_opportunity_path(@context, @assignment) %>"
+          >
+            <%= t("Create Second Opportunity") %>
+          </button>
+        <% end %>
+
+        <% if @can_create_next_mbm_opportunity %>
+          <button
+            id="create_next_mbm_opportunity_button"
+            type="button"
+            class="btn"
+            data-url="<%= course_assignment_create_next_opportunity_path(@context, @assignment) %>"
+          >
+            <%= @next_mbm_opportunity_label %>
+          </button>
+        <% end %>
+
         <div class="inline-block">
           <button class=" al-trigger btn" aria-haspopup="true" aria-owns="toolbar-1">
             <i class="icon-more" aria-hidden="true"></i>

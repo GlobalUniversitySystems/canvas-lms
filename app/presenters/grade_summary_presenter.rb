@@ -298,7 +298,8 @@ class GradeSummaryPresenter
   end
 
   def no_calculations?
-    @groups_assignments.empty? && @periods_assignments.empty?
+    true
+    # @groups_assignments.empty? && @periods_assignments.empty?
   end
 
   def total_weight

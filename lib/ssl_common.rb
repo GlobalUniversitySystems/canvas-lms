@@ -35,6 +35,11 @@ class SSLCommon
     end
 
     def raw_post(url, payload, headers = {}, form_data = nil)
+      Rails.logger.debug('===================raw_post start========================')
+      Rails.logger.debug("url: #{url}")
+      Rails.logger.debug("payload: #{payload}")
+      Rails.logger.debug("form_data: #{form_data}")
+      Rails.logger.debug('===================raw_post end========================')
       url = URI.parse(url)
       http = get_http_conn(url.host, url.port, url.scheme.casecmp?("https"))
       req = Net::HTTP::Post.new(url.request_uri, headers)

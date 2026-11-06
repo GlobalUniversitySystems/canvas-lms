@@ -482,12 +482,13 @@ function initDropdown() {
   const optionsArray = window.jsonData.studentsWithSubmissions.map(student => {
     const {submission_state, submission} = student
     let {name} = student
+    let {ilp} = student
     const className = SpeedgraderHelpers.classNameBasedOnStudent({submission_state, submission})
     if (hideStudentNames || isAnonymous) {
       name = anonymousName(student)
     }
 
-    return {[anonymizableId]: student[anonymizableId], anonymizableId, name, className}
+    return {[anonymizableId]: student[anonymizableId], anonymizableId, name, className, ilp}
   })
 
   const sectionSelectionOptionList = sectionSelectionOptions(
@@ -1292,6 +1293,7 @@ EG = {
       })
 
     $grade.change(EG.handleGradeSubmit)
+    $grade.on('input', EG.enforceMaxGrade)
 
     $multiple_submissions.change(_e => {
       if (typeof EG.currentStudent.submission === 'undefined') EG.currentStudent.submission = {}
@@ -3560,6 +3562,36 @@ EG = {
 
   shouldParseGrade() {
     return EG.isGradingTypePercent() || ENV.grading_type === 'points'
+  },
+
+  // Front-end only guard: a "points" grading type assignment's entered
+  // grade should never exceed the assignment's points possible (rounded
+  // to at most 1 decimal place). Returns null when the cap doesn't apply.
+  maxAllowedGrade() {
+    if (ENV.grading_type !== 'points') return null
+
+    const pointsPossible = parseFloat(window.jsonData.points_possible)
+    // eslint-disable-next-line no-restricted-globals
+    if (isNaN(pointsPossible)) return null
+
+    return round(pointsPossible, 1)
+  },
+
+  enforceMaxGrade(e) {
+    const max = EG.maxAllowedGrade()
+    if (max == null) return
+
+    const $input = $(e.target)
+    const parsed = numberHelper.parse($input.val())
+    // eslint-disable-next-line no-restricted-globals
+    if (isNaN(parsed)) return
+
+    if (round(parsed, 1) > max) {
+      $input.val(I18n.n(max))
+      $.flashError(
+        I18n.t('Grade cannot be greater than %{max} points', {max: I18n.n(max)})
+      )
+    }
   },
 
   formatGradeForSubmission(grade) {

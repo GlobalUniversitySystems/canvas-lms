@@ -153,6 +153,31 @@ module Api::V1::Assignment
     hash["allowed_attempts"] = -1 if assignment.allowed_attempts.nil?
     paced_course = Course.find_by(id: assignment.context_id)&.enable_course_paces?
     hash["in_paced_course"] = paced_course if paced_course
+    crs = assignment.context
+    grade_pass_info = crs&.grade_passing_info
+    unless grade_pass_info.is_a?(Hash)
+      grade_pass_info = JSON.parse(grade_pass_info) rescue nil
+    end
+    hash["grade_passing_info"] = grade_pass_info
+    ag = assignment.assignment_group
+    hash["component_type"] = ag.component_type if crs&.is_module_category rescue nil
+    hash["mandatory_group"] = ag.mandatory rescue nil
+    hash["is_module_category"] = crs&.is_module_category rescue nil
+    hash["grade_type_name"] = crs&.grade_type_name rescue nil
+    hash["passing_grade"] = crs&.passing_grade rescue nil
+    hash["bba_custom_opportunity"] = assignment.bba_custom_opportunity
+    hash["can_create_second_opportunity"] = assignment.second_opportunity_eligible_group? &&
+                                             assignment.first_opportunity? &&
+                                             assignment.second_opportunity_assignment.blank? &&
+                                             assignment.assignment_group.grants_right?(user, :create)
+    hash["second_opportunity_assignment_id"] = assignment.second_opportunity_assignment&.id
+    hash["mbm_opportunity_number"] = assignment.mbm_opportunity_number
+    hash["can_create_next_mbm_opportunity"] = assignment.points_mbm_eligible_group? &&
+                                               (assignment.mbm_first_opportunity? || assignment.mbm_second_opportunity?) &&
+                                               assignment.assignment_group.opportunity == Assignment::MBM_THIRD_OPPORTUNITY &&
+                                               assignment.mbm_next_opportunity_assignment.blank? &&
+                                               assignment.assignment_group.grants_right?(user, :create)
+    hash["next_mbm_opportunity_assignment_id"] = assignment.mbm_next_opportunity_assignment&.id
 
     unless opts[:exclude_response_fields].include?("in_closed_grading_period")
       hash["in_closed_grading_period"] = assignment.in_closed_grading_period?
@@ -941,7 +966,7 @@ module Api::V1::Assignment
 
     if assignment_params[:points_possible].blank? &&
        (assignment.new_record? || assignment_params.key?(:points_possible)) # only change if they're deliberately updating to blank
-      assignment_params[:points_possible] = 0
+      assignment_params[:points_possible] = Assignment::DEFAULT_POINTS_POSSIBLE
     end
 
     unless assignment.new_record?

@@ -346,6 +346,96 @@ class GradeCalculator
     @submissions_by_user ||= submissions.group_by { |s| Shard.relative_id_for(s.user_id, Shard.current, @course.shard) }
   end
 
+  # Only relevant for courses using the "Points (2026)" grading scheme.
+  # Maps first_assignment_id => AssignmentSecondOpportunity for all active
+  # second-opportunity records tied to the assignments being calculated.
+  def second_opportunities_by_first_assignment_id
+    return @second_opportunities_by_first_assignment_id if defined? @second_opportunities_by_first_assignment_id
+
+    @second_opportunities_by_first_assignment_id =
+      if @course.grade_type_name == "Points (2026)"
+        AssignmentSecondOpportunity.active
+                                    .where(first_assignment_id: @assignments.map(&:id))
+                                    .index_by(&:first_assignment_id)
+      else
+        {}
+      end
+  end
+
+  # Exclude the lower-scoring submission from a first/second opportunity pair.
+  # If both are graded, keep the one with the higher score; ties keep the
+  # first assignment in the pair.
+  def excluded_by_second_opportunity?(assignment_id:, submissions_by_assignment_id:)
+    sec_opp = second_opportunities_by_first_assignment_id[assignment_id]
+    sec_opp ||= AssignmentSecondOpportunity.active.find_by(second_assignment_id: assignment_id)
+    return false unless sec_opp
+
+    paired_assignment_id = if sec_opp.first_assignment_id == assignment_id
+                             sec_opp.second_assignment_id
+                           else
+                             sec_opp.first_assignment_id
+                           end
+
+    current_submission = submissions_by_assignment_id[assignment_id]
+    paired_submission = submissions_by_assignment_id[paired_assignment_id]
+    return false unless current_submission&.graded? && paired_submission&.graded?
+
+    current_score = current_submission.score.to_f
+    paired_score = paired_submission.score.to_f
+
+    if assignment_id == sec_opp.first_assignment_id
+      current_score < paired_score
+    else
+      current_score <= paired_score
+    end
+  end
+
+  # Only relevant for courses using the "Points MBM" grading scheme. Maps
+  # assignment_group_id => [Assignment, ...] for every assignment (among
+  # those being calculated) that occupies an opportunity slot (1/2/3) in
+  # that group. A group has at most one assignment per slot, so this is
+  # sufficient to reconstruct each opportunity chain without needing to
+  # traverse assignment_mbm_opportunities for this calculation.
+  def mbm_opportunity_assignments_by_group
+    return @mbm_opportunity_assignments_by_group if defined? @mbm_opportunity_assignments_by_group
+
+    @mbm_opportunity_assignments_by_group =
+      if @course.grade_type_name == "Points MBM"
+        @assignments.select { |a| a.mbm_opportunity_number.present? }.group_by(&:assignment_group_id)
+      else
+        {}
+      end
+  end
+
+  def mbm_assignment_by_id
+    @mbm_assignment_by_id ||= @assignments.index_by(&:id)
+  end
+
+  # Keep only the highest-scoring submission among however many of the up
+  # to 3 chained opportunity assignments in a group are actually graded --
+  # not just a pairwise comparison, unlike #excluded_by_second_opportunity?,
+  # which requires both sides of a pair to be graded before excluding the
+  # lower one. Ties favor the earliest opportunity (lowest
+  # mbm_opportunity_number).
+  def excluded_by_points_mbm_opportunity?(assignment_id:, submissions_by_assignment_id:)
+    return false unless @course.grade_type_name == "Points MBM"
+
+    assignment = mbm_assignment_by_id[assignment_id]
+    return false unless assignment&.mbm_opportunity_number.present?
+
+    siblings = mbm_opportunity_assignments_by_group[assignment.assignment_group_id] || []
+    return false if siblings.size < 2
+
+    graded_siblings = siblings.select { |a| submissions_by_assignment_id[a.id]&.graded? }
+    return false if graded_siblings.empty?
+
+    winner = graded_siblings.max_by do |a|
+      [submissions_by_assignment_id[a.id].score.to_f, -a.mbm_opportunity_number]
+    end
+
+    winner.id != assignment_id
+  end
+
   def compute_branch(**opts)
     opts = opts.reverse_merge(
       groups: @groups,
@@ -794,6 +884,15 @@ class GradeCalculator
       group_submissions.reject! { |s| s[:score].nil? } if ignore_ungraded
       group_submissions.reject! { |s| s[:excused] }
       group_submissions.reject! { |s| s[:assignment].omit_from_final_grade? }
+      group_submissions.reject! do |s|
+        excluded_by_second_opportunity?(
+          assignment_id: s[:assignment].id,
+          submissions_by_assignment_id: submissions_by_assignment_id
+        ) || excluded_by_points_mbm_opportunity?(
+          assignment_id: s[:assignment].id,
+          submissions_by_assignment_id: submissions_by_assignment_id
+        )
+      end
       group_submissions.each { |s| s[:score] ||= 0 }
 
       logged_submissions = group_submissions.map { |s| loggable_submission(s) }
@@ -815,6 +914,7 @@ class GradeCalculator
         possible: possible,
         weight: group.group_weight,
         grade: ((score.to_f / possible * 100).round(2).to_f if possible > 0),
+        mandatory: group.mandatory,
         dropped: dropped_submissions
       }.tap do |group_grade_info|
         Rails.logger.debug "GRADES: calculated #{group_grade_info.inspect}"
@@ -989,8 +1089,28 @@ class GradeCalculator
     dropped
   end
 
+  # For "Points (2026)" courses, a non-mandatory assignment group whose own
+  # grade (on the 0-10 point scale) falls below this threshold is excluded
+  # entirely from the course total grade calculation. It neither contributes
+  # score/possible/weight nor triggers automatic course failure -- that is
+  # reserved for mandatory groups (see Course#any_mandatory_ag_failed?).
+  NON_MANDATORY_GROUP_MIN_GRADE_BBA = 5.3
+
+  def exclude_failing_non_mandatory_groups(group_sums)
+    return group_sums unless @course.grade_type_name == "Points (2026)"
+
+    group_sums.reject do |gs|
+      next false if gs[:mandatory]
+      next false if gs[:possible].to_f <= 0
+
+      group_grade_points = (gs[:score].to_f / gs[:possible].to_f) * 10
+      group_grade_points < NON_MANDATORY_GROUP_MIN_GRADE_BBA
+    end
+  end
+
   # returns grade information from all the assignment groups
   def calculate_total_from_group_scores(group_sums)
+    group_sums = exclude_failing_non_mandatory_groups(group_sums)
     dropped = gather_dropped_from_group_scores(group_sums)
 
     if @course.group_weighting_scheme == "percent"

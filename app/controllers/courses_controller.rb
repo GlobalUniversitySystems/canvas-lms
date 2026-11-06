@@ -851,6 +851,17 @@ class CoursesController < ApplicationController
                      :conclude_at
                    end
 
+      if params[:course][:grade_passing_info].present?
+        info = params[:course].delete(:grade_passing_info)
+        parsed = JSON.parse(info) rescue nil
+        ErrorReport.create(
+          category: 'Debug',
+          message: 'course create -> grade_passing_info',
+          backtrace: {params: params, info: info, parsed: parsed}
+        )
+        params_for_create[:grade_passing_info] = parsed || info
+      end
+
       # If Term enrollment is specified, don't allow setting enrollment dates
       params_for_create = params_for_create.except(:start_at, :conclude_at) unless value_to_boolean(params_for_create[:restrict_enrollments_to_course_dates])
 
@@ -3163,6 +3174,20 @@ class CoursesController < ApplicationController
         params_for_update -= [*@course.stuck_sis_fields]
       end
 
+      if params[:course].key?(:grade_passing_info)
+        info = params[:course].delete(:grade_passing_info)
+        parsed = JSON.parse(info) rescue nil
+        unless parsed.is_a?(Hash)
+          parsed = JSON.parse(parsed) rescue nil
+        end
+        ErrorReport.create(
+          category: 'Debug',
+          message: 'course update -> grade_passing_info',
+          backtrace: {params: params, info: info, parsed: parsed}
+        )
+        params_for_update[:grade_passing_info] = parsed || info
+      end
+
       @course.attributes = params_for_update
 
       if params[:course][:course_visibility].present? && @course.grants_right?(@current_user, :manage_course_visibility)
@@ -3986,7 +4011,8 @@ class CoursesController < ApplicationController
       :locale, :integration_id, :hide_final_grades, :hide_distribution_graphs, :hide_sections_on_course_users_page, :lock_all_announcements, :public_syllabus,
       :quiz_engine_selected, :public_syllabus_to_auth, :course_format, :time_zone, :organize_epub_by_content_type, :enable_offline_web_export,
       :show_announcements_on_home_page, :home_page_announcement_limit, :allow_final_grade_override, :filter_speed_grader_by_student_group, :homeroom_course,
-      :template, :course_color, :homeroom_course_id, :sync_enrollments_from_homeroom, :friendly_name, :enable_course_paces, :default_due_time, :conditional_release
+      :template, :course_color, :homeroom_course_id, :sync_enrollments_from_homeroom, :friendly_name, :enable_course_paces, :default_due_time, :conditional_release,
+      :grade_type_name, :is_module_category, :grade_passing_info, :passing_grade
     )
   end
 end

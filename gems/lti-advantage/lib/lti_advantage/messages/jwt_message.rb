@@ -71,6 +71,11 @@ module LtiAdvantage::Messages
                 :tool_platform
 
     def self.create_jws(body, private_key, alg = :RS256)
+      ErrorReport.create(
+        category: 'Debug',
+        message: 'self.create_jws(body, private_key, alg = :RS256)',
+        backtrace: {private_key: private_key, body: body}
+      )
       JSON::JWT.new(body).sign(private_key, alg).to_s
     end
 

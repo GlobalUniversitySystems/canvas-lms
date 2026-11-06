@@ -675,6 +675,27 @@ class DiscussionTopicsController < ApplicationController
     add_crumb(@topic.title, named_context_url(@context, :context_discussion_topic_url, @topic.id))
     @page_title = join_title(t("#titles.topic", "Topic"), @topic.title)
 
+    # "Second Opportunity" button (Points (2026) mandatory groups): only
+    # usable from the *first* opportunity discussion, when no second
+    # opportunity has been created yet.
+    @can_create_second_opportunity = @topic.assignment.present? &&
+                                      @topic.assignment.second_opportunity_eligible_group? &&
+                                      @topic.assignment.first_opportunity? &&
+                                      @topic.assignment.second_opportunity_assignment.blank? &&
+                                      can_do(@topic.assignment.assignment_group, @current_user, :create)
+
+    # "Create Second Opportunity"/"Create Resit" button (Points MBM
+    # mandatory groups): usable from the first or second opportunity
+    # discussion, when the group allows 3 opportunities and the next slot
+    # is still empty.
+    @can_create_next_mbm_opportunity = @topic.assignment.present? &&
+                                        @topic.assignment.points_mbm_eligible_group? &&
+                                        (@topic.assignment.mbm_first_opportunity? || @topic.assignment.mbm_second_opportunity?) &&
+                                        @topic.assignment.assignment_group.opportunity == Assignment::MBM_THIRD_OPPORTUNITY &&
+                                        @topic.assignment.mbm_next_opportunity_assignment.blank? &&
+                                        can_do(@topic.assignment.assignment_group, @current_user, :create)
+    @next_mbm_opportunity_label = @topic.assignment&.mbm_next_opportunity_label
+
     if @topic.deleted?
       flash[:notice] = I18n.t :deleted_topic_notice, "That topic has been deleted"
       redirect_to named_context_url(@context, :context_discussion_topics_url)

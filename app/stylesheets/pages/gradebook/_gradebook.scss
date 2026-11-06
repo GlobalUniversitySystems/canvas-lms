@@ -532,6 +532,10 @@ $gradebook_cell_padding_top: 8px;
   }
 
   &.assignment-group-cell {
+    .gradebook-cell--failed-assignment-group {
+      background-color: $ic-bg-light-danger;
+    }
+
     .gradebook-cell .percentage {
       display: inline-block;
       overflow: hidden;

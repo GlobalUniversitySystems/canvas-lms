@@ -24,6 +24,7 @@ import AssignmentListItemView from './AssignmentListItemView'
 import CreateAssignmentView from './CreateAssignmentView.coffee'
 import CreateGroupView from './CreateGroupView.coffee'
 import DeleteGroupView from './DeleteGroupView.coffee'
+import Assignment from '@canvas/assignments/backbone/models/Assignment.coffee'
 import preventDefault from 'prevent-default'
 import template from '../../jst/AssignmentGroupListItem.handlebars'
 import AssignmentKeyBindingsMixin from '../mixins/AssignmentKeyBindingsMixin'
@@ -31,7 +32,9 @@ import {shimGetterShorthand} from '@canvas/util/legacyCoffeesScriptHelpers'
 import React from 'react'
 import ReactDOM from 'react-dom'
 import ContentTypeExternalToolTray from '@canvas/trays/react/ContentTypeExternalToolTray'
+import AssignmentGroupToolLauncher from '../../react/AssignmentGroupToolLauncher'
 import {ltiState} from '@canvas/lti/jquery/messages'
+import '@canvas/rails-flash-notifications'
 
 I18n = useI18nScope('AssignmentGroupListItemView')
 
@@ -64,6 +67,7 @@ export default class AssignmentGroupListItemView extends DraggableCollectionView
     'keydown .assignment_group': 'handleKeys'
     'click .move_contents':  'onMoveContents'
     'click .move_group':  'onMoveGroup'
+    'click .create_omitted_assignment': 'createOmittedAssignment'
     'click .ag-header-controls .menu_tool_link': 'openExternalTool'
 
   messages: shimGetterShorthand {},
@@ -77,6 +81,7 @@ export default class AssignmentGroupListItemView extends DraggableCollectionView
     @createAssignmentView.remove() if @createAssignmentView
     @editGroupView.remove() if @editGroupView
     @deleteGroupView.remove() if @deleteGroupView
+    @unmountToolLauncher()
     super(@canManage())
 
     # reset the model's view property; it got overwritten by child views
@@ -98,6 +103,76 @@ export default class AssignmentGroupListItemView extends DraggableCollectionView
 
     if @model.hasRules()
       @createRulesToolTip()
+
+    @mountToolLauncher() if @canAdd() and @isOpportunityToolLauncherScheme() and @belowOpportunityToolLimit()
+
+  isOpportunityToolLauncherScheme: ->
+    ENV.COURSE_GRADE_TYPE_NAME == "Points (2026)" or ENV.COURSE_GRADE_TYPE_NAME == "Points MBM"
+
+  # Mirrors Points (2026) exactly: the tool launcher stays visible purely
+  # based on the group's gradeable-assignment *count*, not on whether an
+  # opportunity assignment already exists. This is what lets the actual
+  # *next* Turnitin/LTI assignment be created by relaunching the same tool
+  # again at the group level (there is no Canvas page to put an
+  # in-assignment button on for external_tool-type assignments -
+  # AssignmentsController#show redirects straight into the tool launch) -
+  # the relaunched assignment is auto-slotted into the next opportunity
+  # number via Assignment#auto_assign_second_opportunity! /
+  # #auto_assign_next_mbm_opportunity!. Points (2026) always caps at 2;
+  # Points MBM caps at the group's own `opportunity` value (1 or 3).
+  #
+  # Points MBM additionally only keeps the launcher visible while the
+  # *latest* opportunity assignment so far is itself external_tool-typed
+  # (or none exist yet). Once a non-external_tool opportunity (discussion/
+  # quiz/plain) has been created, it already has its own in-assignment
+  # "Create Second Opportunity"/"Create Resit" button - the group-level
+  # launcher must not be used to continue that chain (it would let the
+  # teacher bolt on a mismatched Turnitin assignment instead of using the
+  # intended per-assignment flow).
+  belowOpportunityToolLimit: ->
+    cap = if ENV.COURSE_GRADE_TYPE_NAME == "Points MBM" then (@model.get('opportunity') or 1) else 2
+    return false unless @belowGradedAssignmentLimit(cap)
+    return true unless ENV.COURSE_GRADE_TYPE_NAME == "Points MBM"
+    @latestMbmOpportunityIsExternalToolOrAbsent()
+
+  belowGradedAssignmentLimit: (cap = 2) ->
+    gradedAssignmentCount = @collection.filter((assign) ->
+      !assign.get('omit_from_final_grade')
+    ).length
+    gradedAssignmentCount < cap
+
+  latestMbmOpportunityIsExternalToolOrAbsent: ->
+    opportunityAssignments = @collection.filter (assign) ->
+      assign.get('mbm_opportunity_number')?
+    return true if opportunityAssignments.length == 0
+
+    latest = opportunityAssignments.reduce (best, current) ->
+      if current.get('mbm_opportunity_number') > best.get('mbm_opportunity_number') then current else best
+
+    submissionTypes = latest.get('submission_types') or []
+    submissionTypes.length == 1 and submissionTypes[0] == 'external_tool'
+
+  mountToolLauncher: ->
+    @toolLauncherMountPoint = @$el.find('.tii-tool-mount-point')[0]
+    return unless @toolLauncherMountPoint
+    ReactDOM.render(
+      React.createElement(AssignmentGroupToolLauncher, {
+        contextType: 'course'
+        contextId: @course.get('id')
+        assignmentGroupId: String(@model.get('id'))
+        assignmentGroupName: @model.get('name')
+      }),
+      @toolLauncherMountPoint
+    )
+
+  unmountToolLauncher: ->
+    if @toolLauncherMountPoint
+      ReactDOM.unmountComponentAtNode(@toolLauncherMountPoint)
+      @toolLauncherMountPoint = null
+
+  remove: ->
+    @unmountToolLauncher()
+    super
 
   createItemView: (model) ->
     options =
@@ -141,8 +216,9 @@ export default class AssignmentGroupListItemView extends DraggableCollectionView
       @editGroupView = new CreateGroupView
         assignmentGroup: @model
         userIsAdmin: @userIsAdmin
-      @createAssignmentView = new CreateAssignmentView
-        assignmentGroup: @model
+      unless @addAssignmentLocked()
+        @createAssignmentView = new CreateAssignmentView
+          assignmentGroup: @model
     if @canDelete()
       @deleteGroupView = new DeleteGroupView
         model: @model
@@ -176,6 +252,7 @@ export default class AssignmentGroupListItemView extends DraggableCollectionView
     showWeight = @course?.get('apply_assignment_group_weights') and data.group_weight?
     canMove = @model.collection.length > 1
 
+
     attributes = Object.assign(data, {
       course_home: ENV.COURSE_HOME
       canMove: canMove
@@ -185,11 +262,20 @@ export default class AssignmentGroupListItemView extends DraggableCollectionView
       displayableRules: @displayableRules()
       showWeight: showWeight
       groupWeight: data.group_weight
+      componentType: data.component_type
+      mandatory: data.mandatory
+      opportunity: data.opportunity
+      isModuleCategory: data.is_module_category
+      gradeTypeName: data.grade_type_name
+      gradePassingInfo: data.grade_passing_info
+      passingGradeBBA: data.passing_grade
       toggleMessage: @messages.toggleMessage
       hasFrozenAssignments: @model.hasFrozenAssignments? and @model.hasFrozenAssignments()
       hasIntegrationData: @model.hasIntegrationData? and @model.hasIntegrationData()
       postToSISName: ENV.SIS_NAME
       assignmentGroupMenuPlacements: @assignment_group_menu_tools
+      addAssignmentLocked: @addAssignmentLocked()
+      canCreateOmittedAssignment: @canCreateOmittedAssignment()
       ENV: ENV
     })
 
@@ -366,6 +452,31 @@ export default class AssignmentGroupListItemView extends DraggableCollectionView
   canAdd: ->
     ENV.PERMISSIONS.manage_assignments_add
 
+  # True when this group already has its "first opportunity" assignment
+  # created and is therefore locked out of the default "add assignment"
+  # flow (see AssignmentsController#index / SECOND_OPPORTUNITY_LOCKED_GROUP_IDS).
+  secondOpportunityLocked: ->
+    lockedIds = ENV.SECOND_OPPORTUNITY_LOCKED_GROUP_IDS or []
+    groupId = @model.get('id')
+    lockedIds.some (id) -> String(id) == String(groupId)
+
+  # Same as #secondOpportunityLocked, but for "Points MBM" groups that have
+  # already hit their per-group opportunity cap (1 or 3) - see
+  # AssignmentsController#index / MBM_LOCKED_GROUP_IDS.
+  mbmOpportunityLocked: ->
+    lockedIds = ENV.MBM_LOCKED_GROUP_IDS or []
+    groupId = @model.get('id')
+    lockedIds.some (id) -> String(id) == String(groupId)
+
+  # Combined lock state (either scheme) used to decide whether the default
+  # "add assignment" control/form should be shown at all.
+  addAssignmentLocked: ->
+    @secondOpportunityLocked() or @mbmOpportunityLocked()
+
+  canCreateOmittedAssignment: ->
+    @model.get('mandatory') &&
+      (@model.get('grade_type_name') == "Points (2026)" || @model.get('grade_type_name') == "Points MBM")
+
   canManage: ->
     ENV.PERMISSIONS.manage
 
@@ -474,3 +585,30 @@ export default class AssignmentGroupListItemView extends DraggableCollectionView
 
     component = React.createElement(ContentTypeExternalToolTray, props)
     ReactDOM.render(component, $('#external-tool-mount-point')[0])
+
+  createOmittedAssignment: (ev) =>
+    ev.preventDefault()
+    return unless @canCreateOmittedAssignment()
+
+    button = $(ev.currentTarget)
+    return if button.prop('disabled')
+    button.prop('disabled', true).attr('aria-disabled', true)
+
+    assignment = new Assignment(
+      assignment_group_id: @model.get('id')
+      name: "Assignment not included into grade calculation"
+      submission_types: ["none"]
+      omit_from_final_grade: true
+    )
+
+    assignment.save null,
+      success: (savedAssignment) =>
+        ENV.PERMISSIONS.by_assignment_id && ENV.PERMISSIONS.by_assignment_id[savedAssignment.id] = {
+          update: ENV.PERMISSIONS.manage_assignments
+        }
+        @collection.add(savedAssignment)
+        @expand(false)
+      error: ->
+        $.flashError(I18n.t("Failed to create assignment not included into grade calculation"))
+      complete: ->
+        button.prop('disabled', false).attr('aria-disabled', false)

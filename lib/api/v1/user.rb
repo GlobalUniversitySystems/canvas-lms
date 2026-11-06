@@ -85,6 +85,8 @@ module Api::V1::User
         end
       end
 
+      json[:ilp] = user&.ilp
+
       if user.pronouns
         json[:pronouns] = user.pronouns
       end
@@ -217,6 +219,7 @@ module Api::V1::User
     hash = {
       id: user.id,
       anonymous_id: user.id.to_s(36),
+      ilp: user.ilp,
       display_name: user.short_name,
       avatar_image_url: avatar_url_for_user(user),
       html_url: participant_url,
@@ -275,6 +278,12 @@ module Api::V1::User
     only = only.without(:course_section_id) if excludes.include?("course_section_id")
     api_json(enrollment, user, session, only: only).tap do |json|
       json[:enrollment_state] = json.delete("workflow_state")
+      course = enrollment.course
+      json[:grade_type_name] = course.grade_type_name
+      json[:is_module_category] = course.is_module_category
+      json[:grade_passing_info] = course.grade_passing_info
+      json[:passing_grade] = course.passing_grade
+
       if enrollment.course.workflow_state == "deleted" || enrollment.course_section.workflow_state == "deleted"
         json[:enrollment_state] = "deleted"
       end

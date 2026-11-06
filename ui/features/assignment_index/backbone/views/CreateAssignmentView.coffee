@@ -132,6 +132,7 @@ export default class CreateAssignmentView extends DialogFormView
       isInClosedPeriod: @model.inClosedGradingPeriod(),
       defaultToolName: ENV.DEFAULT_ASSIGNMENT_TOOL_NAME
       small_tablet: isSmallTablet
+      ENV: ENV
 
     # master_course_restrictions only apply if this is a child course
     # and is restricted by a master course.

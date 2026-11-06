@@ -193,6 +193,50 @@ test('avoids floating point rounding errors on submission percentages', () => {
   strictEqual(grades.final.submissions[0].percent, 0.535)
 })
 
+test('keeps the highest score when both first and second opportunity submissions are present', () => {
+  assignmentGroup = {
+    id: 301,
+    rules: {},
+    mandatory: true,
+    grade_type_name: 'Points (2026)',
+    assignments: [
+      {
+        id: 201,
+        points_possible: 100,
+        omit_from_final_grade: false,
+        anonymize_students: false,
+        bba_custom_opportunity: 1
+      },
+      {
+        id: 202,
+        points_possible: 100,
+        omit_from_final_grade: false,
+        anonymize_students: false,
+        bba_custom_opportunity: 2
+      }
+    ]
+  }
+
+  submissions = [
+    {
+      assignment_id: 201,
+      score: 90,
+      assignment: assignmentGroup.assignments[0],
+      workflow_state: 'submitted'
+    },
+    {
+      assignment_id: 202,
+      score: 75,
+      assignment: assignmentGroup.assignments[1],
+      workflow_state: 'submitted'
+    }
+  ]
+
+  const grades = AssignmentGroupGradeCalculator.calculate(submissions, assignmentGroup, true)
+  equal(grades.current.score, 90)
+  equal(grades.final.score, 90)
+})
+
 QUnit.module(
   'AssignmentGroupGradeCalculator.calculate with assignments having no points possible',
   {

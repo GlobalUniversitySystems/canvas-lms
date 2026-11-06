@@ -33,6 +33,15 @@ const I18n = useI18nScope('gradebook')
 
 function AssignmentGroupDetail({assignmentGroup, viewUngradedAsZero, weightedGroups}) {
   if (weightedGroups || viewUngradedAsZero) {
+    if (assignmentGroup.gradeTypeName === "Competency" && assignmentGroup.isModuleCategory) {
+      return (
+          <span className="Gradebook__ColumnHeaderDetail Gradebook__ColumnHeaderDetail--OneLine">
+            {assignmentGroup.name}
+          </span>
+      )
+    }
+
+
     let secondaryLine, secondaryLineExt
 
     if (weightedGroups) {

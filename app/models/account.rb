@@ -739,6 +739,7 @@ class Account < ActiveRecord::Base
           Course.where("EXISTS (?)", CourseAccountAssociation.where(account_id: self)
             .where("course_id=courses.id"))
         else
+
           Course.where("EXISTS (?)", CourseAccountAssociation.where(account_id: self, course_section_id: nil)
             .where("course_id=courses.id"))
         end
