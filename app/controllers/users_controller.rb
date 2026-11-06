@@ -507,7 +507,7 @@ class UsersController < ApplicationController
     # trail back to home if you are already home
     clear_crumbs
 
-    @show_footer = true
+    @show_footer = false
 
     if %r{\A/dashboard\z}.match?(request.path)
       return redirect_to(dashboard_url, status: :moved_permanently)
@@ -855,7 +855,7 @@ class UsersController < ApplicationController
               else
                 @context.manageable_courses(include_concluded).limit(limit)
               end
-      @courses += scope.select("courses.*,#{Course.best_unicode_collation_key("name")} AS sort_key").order("sort_key").preload(:enrollment_term).to_a
+      @courses += scope.select("courses.*,#{Course.best_unicode_collation_key("courses.name")} AS sort_key").order("sort_key").preload(:enrollment_term).to_a
     end
 
     @courses = @courses.sort_by do |c|
@@ -1229,6 +1229,15 @@ class UsersController < ApplicationController
       end
     end
     render json: { hidden: true }
+  end
+
+  def update_ilp
+    @current_user.ilp = params[:ilp]
+    if @current_user.save
+      render json: { success: true }
+    else
+      render json: { error: 'can not update ilp' }
+    end
   end
 
   # @API Upload a file
@@ -2043,6 +2052,7 @@ class UsersController < ApplicationController
     managed_attributes.concat %i[name short_name sortable_name] if @user.grants_right?(@current_user, :rename)
     managed_attributes << :terms_of_use if @user == (@real_current_user || @current_user)
     managed_attributes << :email if update_email
+    managed_attributes << :ilp
 
     # we dropped birthdate from user but this will allow backwards compatability and prevent errors
     user_params.delete("birthdate")
@@ -2214,6 +2224,14 @@ class UsersController < ApplicationController
     @target_user ||= @current_user
     if @source_user.grants_right?(@current_user, :merge) && @target_user.grants_right?(@current_user, :merge)
       UserMerge.from(@source_user).into(@target_user, merger: @current_user, source: "users_controller")
+      @target_user.versions.create(
+        {
+          event: 'user_merge',
+          object: @target_user.attributes.to_yaml,
+          object_changes: {merged_user_id: @source_user.id}.to_yaml,
+          whodunnit: @current_user.id
+        }
+      ) rescue nil
       @target_user.touch
       flash[:notice] = t("user_merge_success", "User merge succeeded! %{first_user} and %{second_user} are now one and the same.", first_user: @target_user.name, second_user: @source_user.name)
       if @target_user == @current_user
@@ -3045,7 +3063,7 @@ class UsersController < ApplicationController
       user_params = params[:user]
                     .permit(:name, :short_name, :sortable_name, :time_zone, :show_user_services,
                             :avatar_image, :subscribe_to_emails, :locale, :bio, :terms_of_use,
-                            :self_enrollment_code, :initial_enrollment_type)
+                            :self_enrollment_code, :initial_enrollment_type, :ilp)
       if self_enrollment && user_params[:self_enrollment_code]
         user_params[:self_enrollment_code].strip!
       else

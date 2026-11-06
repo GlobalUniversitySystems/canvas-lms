@@ -42,6 +42,8 @@ class User < ActiveRecord::Base
   include UserLearningObjectScopes
   include PermissionsHelper
 
+  has_paper_trail versions: { class_name: "PaperTrail::UserVersion" }
+
   attr_accessor :previous_id, :gradebook_importer_submissions, :prior_enrollment
 
   before_save :infer_defaults
@@ -914,6 +916,14 @@ class User < ActiveRecord::Base
   def sortable_name
     self.sortable_name = read_attribute(:sortable_name) ||
                          User.last_name_first(self.name, likely_already_surname_first: false)
+  end
+
+  def ilp
+    read_attribute(:ilp)
+  end
+
+  def get_ilp
+    ilp
   end
 
   def primary_pseudonym

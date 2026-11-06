@@ -22,10 +22,44 @@
   provide :page_title, t(:page_title, "Log In to Canvas")
 %>
 
+<style>
+    .osano-cm-button--type_denyAll {display: none !important;}
+    .osano-cm-widget:focus, .osano-cm-widget:hover {outline: none !important;}
+    .osano-cm-button--type_deny {display:none!important;}
+</style>
+
 <% extend Api::V1::Account %>
 
 <% add_body_class "full-width ic-Login-Body" %>
 <%= render "login/canvas/new_login_content" %>
+
+<script>
+    window.dataLayer = window.dataLayer ||[];
+    function gtag(){dataLayer.push(arguments);}
+    gtag('consent','default',{
+        'ad_storage':'denied',
+        'analytics_storage':'denied',
+        'ad_user_data':'denied',
+        'ad_personalization':'denied',
+        'wait_for_update': 500
+    });
+    gtag("set", "ads_data_redaction", true);
+</script>
+
+<!-- Google Tag Manager -->
+<script>(function(w,d,s,l,i){w[l]=w[l]||[];w[l].push({'gtm.start':
+        new Date().getTime(),event:'gtm.js'});var f=d.getElementsByTagName(s)[0],
+    j=d.createElement(s),dl=l!='dataLayer'?'&l='+l:'';j.async=true;j.src=
+    'https://www.googletagmanager.com/gtm.js?id='+i+dl;f.parentNode.insertBefore(j,f);
+})(window,document,'script','dataLayer','GTM-NTKTFH6');</script>
+<!-- End Google Tag Manager -->
+
+<!-- Google Tag Manager (noscript) -->
+<noscript><iframe src="https://www.googletagmanager.com/ns.html?id=GTM-NTKTFH6"
+                  height="0" width="0" style="display:none;visibility:hidden"></iframe></noscript>
+<!-- End Google Tag Manager (noscript) -->
+
+<script src="https://cmp.osano.com/16BQRvTGwqLg43AqP/714943b0-5400-4d54-9062-01d093320c5a/osano.js"></script>
 
 <% if flash[:logged_out] && HostUrl.file_host(@domain_root_account, request.host_with_port) %>
   <img class="hidden-readable" src="//<%= HostUrl.file_host(@domain_root_account, request.host_with_port) %>/file_session/clear"/>

@@ -301,6 +301,46 @@ button.ic-app-header__menu-list-link {
       inset 0 0 0 2px var(--ic-brand-global-nav-menu-item__text-color);
   }
 }
+.menu-item__hovered {
+  position: relative;
+}
+
+.menu-item__hovered-container {
+  position: fixed;
+  left: 100px;
+  top: 0;
+  z-index: 10;
+  background-color: var(--ic-brand-global-nav-bgd);
+  border-radius: 2px;
+  color: var(--ic-brand-global-nav-menu-item__text-color);
+  max-width: 250px;
+  min-width: 250px;
+  padding: 10px 15px;
+  font-size: 11px;
+  line-height: 13px;
+  display: none;
+
+  &:before {
+    content: '';
+    position: absolute;
+    top: 8px;
+    left: -9px;
+    width: 0px;
+    height: 0px;
+    border-top: 10px solid transparent;
+    border-bottom: 10px solid transparent;
+    border-right: 10px solid var(--ic-brand-global-nav-bgd);
+    box-sizing: border-box;
+  }
+
+  &--visible {
+    display: block;
+  }
+}
+
+.primary-nav-transitions .menu-item__hovered-container--visible {
+  display: none;
+}
 // set to block to avoid any exta inline spacing at bottom
 .ic-app-header__uploaded-logo {
   display: block;

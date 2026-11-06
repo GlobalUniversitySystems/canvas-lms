@@ -39,6 +39,7 @@ export type GradingError = {
 export type StudentWithSubmission = {
   submission_state: 'graded' | 'not_graded' | 'not_submitted' | 'not_gradeable'
   submission: Submission
+  ilp?: string | null
 }
 
 export type TurnitinAsset = {

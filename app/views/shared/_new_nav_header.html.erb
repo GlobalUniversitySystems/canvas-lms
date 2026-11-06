@@ -187,6 +187,16 @@
           </button>
         </li>
       <% end %>
+      <li class="menu-item menu-item__hovered ic-app-header__menu-list-item">
+        <a id="global_nav_conversations_link" target="_blank" href="https://study.berlinsbi.com/courses/14405" class="ic-app-header__menu-list-link not_external">
+          <div class="menu-item-icon-container" aria-hidden="true">
+            <%= render(partial: "shared/svg/#{'k12/' if k12?}svg_icon_proquest_search.svg") %>
+          </div>
+          <div class="menu-item__text">
+            <%= t('Virtual Libraries') %>
+          </div>
+        </a>
+      </li>
       <% unless @current_user.nil? %>
         <%= render(partial: 'external_tools/global_nav_menu_items') %>
       <% end %>

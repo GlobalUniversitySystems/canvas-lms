@@ -39,6 +39,7 @@ export type Student = {
   initialized: boolean
   isConcluded: boolean
   total_grade: number
+  ilp: boolean
 } & {
   // computed values
   computed_current_score: number

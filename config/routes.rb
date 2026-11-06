@@ -31,6 +31,10 @@ CanvasRails::Application.routes.draw do
   # `app/graphql/README.md` for details.
   get "graphiql", to: "graphql#graphiql"
 
+  get "/users/:id/versions/:date", to: "user_versions#index"
+  get "/courses/:id/versions/:date", to: "course_versions#index"
+  get "/upload_assets_to_cdn", to: "course_versions#upload_assets_to_cdn"
+
   resources :submissions, only: [] do
     resources :submission_comments, path: :comments, only: :index, defaults: { format: :pdf }
     resources :docviewer_audit_events, only: [:create], constraints: { format: :json }
@@ -1444,6 +1448,7 @@ CanvasRails::Application.routes.draw do
       delete "users/self/activity_stream", action: "ignore_all_stream_items"
 
       put "users/:user_id/followers/self", action: :follow
+      put "users/:user_id/update_ilp", action: :update_ilp
       delete "users/:user_id/followers/self", action: :unfollow
 
       get "users/self/todo", action: :todo_items, as: "user_todo_list_items"
