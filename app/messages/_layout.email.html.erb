@@ -1,117 +1,807 @@
-<!DOCTYPE html>
-<html dir="<%= I18n.rtl? ? 'rtl' : 'ltr' %>" lang="<%= I18n.locale.to_s %>">
+<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Strict//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd">
+
+<html xmlns="http://www.w3.org/1999/xhtml">
+
+
+
 <head>
-  <meta name="viewport" content="width=device-width">
-  <meta http-equiv="Content-Type" content="text/html; charset=UTF-8">
+
+  <meta http-equiv="Content-Type" content="text/html; charset=utf-8"/>
+
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+
   <style type="text/css">
-/*
-Changes to font size (14->16) for smaller screens
-table[class=body] is the only selector that works for all vendors
-*/
-@media only screen and (max-width: 620px) {
-  table[class=body] p,
-  table[class=body] ul,
-  table[class=body] ol,
-  table[class=body] td,
-  table[class=body] span,
-  table[class=body] a {
-    font-size: 16px !important;
-  }
-  /* remove padding for mobile so no gray shows */
-  table[class=body] .bodycell {
-    padding: 0 !important;
-    width: 100% !important;
-  }
-  /* reduce padding from 20->10 for mobile */
-  table[class=body] .maincell {
-    padding: 10px !important;
-  }
-}
-/*
-ExternalClass fixes Outlook.com / Hotmail emails
-*/
-@media all {
-  .ExternalClass {
-    width: 100%;
-  }
-  .ExternalClass,
-  .ExternalClass p,
-  .ExternalClass span,
-  .ExternalClass font,
-  .ExternalClass td,
-  .ExternalClass div {
-    line-height: 100%;
-  }
-}
+
+        @import url('https://fonts.googleapis.com/css2?family=Open+Sans:wght@300;600;700&display=swap');
+
+
+
+        /***** Client-specific Styles *****/
+
+        #outlook a {
+
+              padding: 0;
+
+        }
+
+
+
+        #outlook table {
+
+              padding: 0;
+
+              margin: 0;
+
+        }
+
+
+
+        /***** Force Outlook to provide a "view in browser" menu link. *****/
+
+        body {
+
+              width: 100% !important;
+
+              -webkit-text-size-adjust: 100%;
+
+              -ms-text-size-adjust: 100%;
+
+              margin: 0;
+
+              padding: 0;
+
+        }
+
+
+
+        /***** Prevent Webkit and Windows Mobile platforms from changing default font sizes, while not breaking desktop design. *****/
+
+        .ExternalClass {
+
+              width: 20px;
+
+        }
+
+
+
+        /***** Force Hotmail to display emails at full width *****/
+
+        .ExternalClass,
+
+        .ExternalClass p,
+
+        .ExternalClass span,
+
+        .ExternalClass font,
+
+        .ExternalClass td,
+
+        .ExternalClass div {
+
+              line-height: 20px;
+
+        }
+
+
+
+        /***** Force Hotmail to display normal line spacing.*****/
+
+        #backgroundTable {
+
+              margin: 0;
+
+              padding: 0;
+
+              width: 100% !important;
+
+              line-height: 100% !important;
+
+        }
+
+
+
+        img {
+
+              outline: none;
+
+              text-decoration: none;
+
+              border: none;
+
+              -ms-interpolation-mode: bicubic;
+
+        }
+
+
+
+        a img {
+
+              border: none;
+
+        }
+
+
+
+        .image_fix {
+
+              display: block;
+
+        }
+
+
+
+        p {
+
+              margin: 0px 0px 8px 0px !important;
+
+        }
+
+
+
+        table td {
+
+              border-collapse: collapse;
+
+        }
+
+
+
+        table {
+
+              border-collapse: collapse;
+
+              mso-table-lspace: 0pt;
+
+              mso-table-rspace: 0pt;
+
+        }
+
+
+
+        a {
+
+              color: #AF232F;
+
+              text-decoration: none;
+
+              text-decoration: none !important;
+
+        }
+
+        tbody td a {
+              color: #AF232F !important;
+
+              text-decoration: none !important;
+        }
+
+
+
+        /*****STYLES*****/
+
+        table[class=full] {
+
+              width: 600px;
+
+              clear: both;
+
+        }
+
+
+
+        img {
+
+              margin-bottom: 0px !important;
+
+              padding-bottom: 0px !important;
+
+        }
+
+
+
+        tr[class=box-shadow] {
+
+              box-shadow: 3px 3px 3px rgba(0, 0, 0, 0.50);
+
+              -webkit-box-shadow: rgba(0, 0, 0, 0.50) 0 1px 0;
+
+              -moz-box-shadow: rgba(0, 0, 0, 0.50) 3px 3px 3px;
+
+        }
+
+
+
+        td[class=text-right-desktop] {
+
+              text-align: right !important;
+
+        }
+
+
+
+        table {
+
+              border-collapse: collapse;
+
+              margin: 0 auto;
+
+        }
+
+
+
+        /*****APPLE LINKS*****/
+
+        .appleLinksBlack a {
+
+              color: #000000 !important;
+
+              text-decoration: none;
+
+        }
+
+
+
+        .appleLinksWhite a {
+
+              color: #ffffff !important;
+
+              text-decoration: none;
+
+        }
+
+
+
+        /*****IPAD STYLES*****/
+
+        @media only screen and (max-width: 599px) {
+
+              a[href^="tel"],
+
+              a[href^="sms"] {
+
+                    text-decoration: none;
+
+                    color: #AF232F;
+
+                    pointer-events: none;
+
+                    cursor: default;
+
+              }
+
+
+
+              .mobile_link a[href^="tel"],
+
+              .mobile_link a[href^="sms"] {
+
+                    text-decoration: default;
+
+                    color: #AF232F !important;
+
+                    pointer-events: auto;
+
+                    cursor: default;
+
+              }
+
+
+
+              table[class=outerdevicewidth] {
+
+                    width: 100% !important;
+
+                    -ms-text-autospace: none;
+
+              }
+
+
+
+              table[class=outerdevicewidthinner] {
+
+                    width: 80% !important;
+
+                    -ms-text-autospace: none;
+
+              }
+
+
+
+              table[class=devicewidth] {
+
+                    width: 100% !important;
+
+              }
+
+
+
+              table[class=customdevicewidth] {
+
+                    width: 420px !important;
+
+                    margin: 0 !important;
+
+              }
+
+
+
+              table[class=devicewidthinner] {
+
+                    width: 400px !important;
+
+                    text-align: center !important;
+
+                    padding-left: 20px !important;
+
+                    padding-right: 20px !important;
+
+              }
+
+
+
+              table[class=devicewidthinner] td {
+
+                    text-align: center !important;
+
+              }
+
+
+
+              table[class=boxdevicewidth] {
+
+                    width: 100% !important;
+
+              }
+
+
+
+              table[class=devicewidthinner2] {
+
+                    width: 150px !important;
+
+                    text-align: center;
+
+              }
+
+
+
+              table[class=customwidth] {
+
+                    width: 234px !important;
+
+              }
+
+
+
+              img[class=banner] {
+
+                    width: 100% !important;
+
+                    height: auto !important;
+
+              }
+
+
+
+              img[class=colimg2] {
+
+                    width: 440px !important;
+
+                    height: 220px !important;
+
+              }
+
+
+
+              td[class=mobile-hide] {
+
+                    display: none !important;
+
+              }
+
+
+
+              td[class=title-font-adjust] {
+
+                    font-size: 20px !important;
+
+                    line-height: normal;
+
+              }
+
+
+
+              td[class=body-font-adjust] {
+
+                    font-size: 14px !important;
+
+                    line-height: 18px;
+
+              }
+
+
+
+              td[class=bullet-font-adjust] {
+
+                    font-size: 14px !important;
+
+                    line-height: normal;
+
+                    vertical-align: middle !important;
+
+              }
+
+
+
+              .responsive-image img {
+
+                    height: auto !important;
+
+                    max-width: 100% !important;
+
+                    width: 100% !important;
+
+              }
+
+
+
+              table[class=header-width-left] {
+
+                    width: 220px !important;
+
+              }
+
+
+
+              table[class=header-width-left-inner] {
+
+                    width: 200px !important;
+
+              }
+
+
+
+              table[class=header-width-right] {
+
+                    width: 200px !important;
+
+              }
+
+
+
+              img[class=header-width-img] {
+
+                    width: 200px !important;
+
+                    height: 270px !important;
+
+                    vertical-align: top !important;
+
+              }
+
+
+
+              td[class=table-width-left] {
+
+                    width: 150px !important;
+
+              }
+
+
+
+              td[class=table-width-right] {
+
+                    width: 264px !important;
+
+              }
+
+
+
+              table[class=table-width-right-inner] {
+
+                    width: 244px !important;
+
+              }
+
+
+
+              img[class=table-width-img] {
+
+                    width: 150px !important;
+
+                    height: 154px !important;
+
+                    vertical-align: top !important;
+
+              }
+
+
+
+              ul[class=text-left] {
+
+                    text-align: left !important;
+
+              }
+
+
+
+              td[class=icon-border] {
+
+                    border: none !important;
+
+              }
+
+
+
+              td[class=text-right-desktop] {
+
+                    text-align: center !important;
+
+              }
+
+        }
+
+
+
+        .auto-style1 {
+
+              text-decoration: underline;
+
+        }
+
+
+
+        .border {
+
+              border-left: 10px solid #E6E7E8;
+
+              border-right: 40px solid #000000;
+
+        }
+
+
+
+        .button-link {
+
+              color: #ffffff !important;
+
+              font-family: Arial, sans-serif;
+
+              font-weight: 700;
+
+              text-transform: uppercase;
+
+              font-size: 14px;
+
+              line-height: 40px;
+
+              text-decoration: none;
+
+              display: block;
+
+              width: 414px;
+
+              border-radius: 5px;
+
+              text-align: center;
+
+              cursor: pointer;
+
+        }
+
+
+
+        .campus-ls .border {
+
+              border-right-color: #101010;
+
+        }
+
+        .campus-ls .link {
+
+              color: #AF232F;
+
+        }
+
+        .campus-ls .button-link {
+
+              background-color: #AF232F;
+
+        }
+
   </style>
+
 </head>
-<!--
-background: white (could be gray)
-default sans serif fonts, 14px, 1.3, #444444
-vendor prefixes for Outlook (-ms) and iOS (-webkit)
-Margin is capitalized to fix Outlook.com
--->
-<body class="" style="background-color:#ffffff; font-family:'Open Sans', 'Lucida Grande', 'Segoe UI', Arial, Verdana, 'Lucida Sans Unicode', Tahoma, 'Sans Serif'; font-size:14px; color: #444444; line-height:1.3; Margin:0; padding:0; -ms-text-size-adjust:100%; -webkit-font-smoothing:antialiased; -webkit-text-size-adjust:100%;">
 
-  <!-- body: background table (if body has a color, this should match) -->
-  <table border="0" cellpadding="0" cellspacing="0" class="body" style="border-collapse:separate; background-color:#ffffff; width:100%; box-sizing:border-box; mso-table-lspace:0pt; mso-table-rspace:0pt;">
-    <tr>
-      <!-- width and max-width so it can scale for mobile -->
-      <td class="bodycell" style="max-width:600px; width:100%; font-family:'Open Sans', 'Lucida Grande', 'Segoe UI', Arial, Verdana, 'Lucida Sans Unicode', Tahoma, 'Sans Serif'; font-size:14px; vertical-align:top; display:block; box-sizing:border-box; padding:10px; Margin:0 auto !important;">
 
-<!-- for older versions of Outlook that don't support max-width -->
-<!--[if (gte mso 9)|(IE)]>
-<table width="600" align="center" cellpadding="0" cellspacing="0" border="0"><tr><td>
-<![endif]-->
 
-        <!-- main: white box for content -->
-        <table class="main" style="background:#fff; width:100%; border-collapse:separate; mso-table-lspace:0pt; mso-table-rspace:0pt; ">
-          <tr>
-            <td class="maincell" style="font-family:sans-serif; font-size:14px; vertical-align:top; box-sizing:border-box; padding:20px;">
+<body class="campus-ls">
 
-                    <%= inner_html %>
+<!-- OUTSIDE TABLE OPENING TAGS START -->
 
-            </td>
-          </tr>
-        </table>
-        <!-- /.main -->
+<table width="100%" bgcolor="#ffffff" cellpadding="0" cellspacing="0" border="0" id="backgroundTable"
 
-        <!-- logo: branding -->
-        <table class="logo" style="width:100%; box-sizing:border-box; border-collapse:separate; mso-table-lspace:0pt; mso-table-rspace:0pt; ">
-          <tr>
-            <td class="logocell" style="text-align:center; vertical-align:top; box-sizing:border-box; padding:10px;">
-              <img src="<%= custom_logo || "https://du11hjcvx0uqb.cloudfront.net/dist/images/email_signature-d2c5880612.png" %>" alt="">
-            </td>
-          </tr>
-        </table>
-        <!-- /.logo -->
+       st-sortable="preheader" align="center" class="fullwidth">
 
-        <!-- footer: gray text below main -->
-        <table class="footer" style="width:100%; box-sizing:border-box; border-collapse:separate; mso-table-lspace:0pt; mso-table-rspace:0pt; ">
-          <tr>
-            <td class="footercell" style="font-family:sans-serif; font-size:14px; vertical-align:top; color:#a8b9c6; font-size:12px; text-align:center; padding:10px; box-sizing:border-box; ">
+  <tbody>
 
-              <% if !content(:footer_link).blank? %>
-                <%= content(:footer_link).html_safe %> &nbsp;|&nbsp;
-              <% end %>
+  <tr>
 
-              <% if !defined?(remove_profile_url_in_layout) || !remove_profile_url_in_layout %>
-                <a href="<%= communication_profile_url %>" style="white-space: nowrap;"><%= t "Update your notification settings" %></a>
-              <% end %>
+    <td>
 
-            </td>
-          </tr>
-        </table>
-        <!-- /.footer -->
+      <!-- OUTSIDE TABLE OPENING TAGS END -->
 
-<!--[if (gte mso 9)|(IE)]>
-</td></tr></table>
-<![endif]-->
 
-      </td>
-    </tr>
-  </table>
-  <!-- /.body -->
+
+      <!-- INNER TABLE OPENING TAGS START -->
+
+      <table width="100%" cellpadding="0" cellspacing="0" border="0" align="center">
+
+        <tbody>
+
+        <tr class="gmail-fix">
+
+          <td>
+
+            <table width="600" cellpadding="0" cellspacing="0" border="0" align="center" class="outerdevicewidth">
+
+              <tr>
+
+                <td cellpadding="0" cellspacing="0" border="0" height="1" ; style="line-height: 1px;">
+
+                  <img src="https://cdn.lsbf.org.uk/eshots/HOCHSCHULE-23-5.png" width="600" height="1"
+
+                       style="display: block; max-height: 1px; min-height: 1px;" class="banner"/>
+
+                </td>
+
+              </tr>
+
+            </table>
+
+          </td>
+
+        </tr>
+
+        <tr>
+
+          <td>
+
+            <table width="600" cellpadding="0" cellspacing="0" border="0" align="center"
+
+                   class="outerdevicewidth border">
+
+              <tbody>
+
+              <tr>
+
+                <td>
+
+                  <!-- logo: branding -->
+
+                  <table width="470" cellpadding="0" cellspacing="0" border="0" align="center"
+
+                         class="outerdevicewidthinner" style="margin: 0 auto;">
+
+                    <tr>
+
+                      <td height="40"><!-- --></td>
+
+                    </tr>
+
+                    <tr>
+
+                      <td>
+
+                        <table cellpadding="0" cellspacing="0" border="0" align="left" class="devicewidth">
+
+                          <tr>
+
+                            <td align="left">
+
+                              <img src="https://cdn.lsbf.org.uk/gus-logo/lon-logo.png" alt="LSBF" title="London School of Business and Finance"
+
+                                   style="vertical-align: top; max-width: 240px; width: 100%; height: auto;"/>
+
+                            </td>
+
+                          </tr>
+
+                          <tr>
+
+                            <td height="14"><!-- --></td>
+
+                          </tr>
+
+                        </table>
+
+                      </td>
+
+                    </tr>
+
+                    <tr>
+
+                      <td height="25"><!-- --></td>
+
+                    </tr>
+
+                  </table>
+
+                  <!-- /.logo -->
+
+
+
+                  <!-- content -->
+
+                  <table width="470" cellpadding="0" cellspacing="0" border="0" align="center" class="outerdevicewidthinner" style="margin: 0 auto">
+
+                    <tbody>
+
+                    <tr>
+
+                      <td>
+
+                        <table width="100%" cellpadding="0" cellspacing="0" border="0" align="center" style="margin: 0 auto;" class="devicewidth">
+
+                          <tbody>
+
+                          <tr>
+
+                            <td style="color: #101010; font-size: 14px; font-family: Arial, Helvetica, sans-serif; line-height: 17px;">
+                              <%= inner_html %>
+                            </td>
+
+                          </tr>
+
+                          <tr><td height="40"><!-- --></td></tr>
+
+                          </tbody>
+
+                        </table>
+
+                      </td>
+
+                    </tr>
+
+                    </tbody>
+
+                  </table>
+
+                  <!-- /.content -->
+
+                </td>
+
+              </tr>
+
+              </tbody>
+
+            </table>
+
+          </td>
+
+        </tr>
+
+        </tbody>
+
+      </table>
+
+      <!-- INNER TABLE CLOSING TAGS END -->
+
+
+
+      <!-- OUTSIDE TABLE CLOSING TAGS END -->
+
+    </td>
+
+  </tr>
+
+  </tbody>
+
+</table>
+
+<!-- OUTSIDE TABLE CLOSING TAGS START -->
 
 </body>
+
+
+
 </html>

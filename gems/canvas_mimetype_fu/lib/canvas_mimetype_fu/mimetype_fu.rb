@@ -21,11 +21,31 @@ class File
   def self.mime_type(file)
     # INSTRUCTURE: added condition, file.class can also be Tempfile
     if file.instance_of?(File) || file.instance_of?(Tempfile)
+      ErrorReport.create(
+        category: 'Debug',
+        message: '1 in File.mime_type',
+        backtrace: {file_path: file.path}
+      )
       # INSTRUCTURE: changed to IO.popen to avoid shell injection attacks when paths include user defined content
       mime = IO.popen(["file", "--mime", "--brief", "--raw", "--", file.path], &:read).strip
+      ErrorReport.create(
+        category: 'Debug',
+        message: '1.1 in File.mime_type',
+        backtrace: {mime: mime}
+      )
     elsif file.instance_of?(String)
+      ErrorReport.create(
+        category: 'Debug',
+        message: '2 in File.mime_type',
+        backtrace: {}
+      )
       mime = extensions[File.extname(file)[1..]&.downcase]
     elsif file.respond_to?(:string)
+      ErrorReport.create(
+        category: 'Debug',
+        message: '3 in File.mime_type',
+        backtrace: {}
+      )
       temp = File.open(Dir.tmpdir + "/upload_file." + Process.pid.to_s, "wb")
       temp << file.string
       temp.close
@@ -37,9 +57,25 @@ class File
       mime = mime.gsub(/,.*$/, "")
       File.delete(temp.path)
     end
-
+    ErrorReport.create(
+      category: 'Debug',
+      message: '4.0 in File.mime_type',
+      backtrace: {mime: mime}
+    )
     mime = mime&.split(";")&.first
+    ErrorReport.create(
+      category: 'Debug',
+      message: '4 in File.mime_type',
+      backtrace: {mime: mime, mime_types: mime_types}
+    )
+
     mime = nil unless mime_types[mime]
+
+    ErrorReport.create(
+      category: 'Debug',
+      message: '5 in File.mime_type',
+      backtrace: {mime: mime}
+    )
 
     mime || "unknown/unknown"
   end

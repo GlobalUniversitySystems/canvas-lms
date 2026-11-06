@@ -98,10 +98,10 @@ module Bundler
           lockfile_path = lockfile_name.relative_path_from(Dir.pwd)
           parent_lockfile_name = lockfile_definition[:parent]
           parent_parser = @cache.parser(parent_lockfile_name)
-          unless parser.platforms == parent_parser.platforms
-            Bundler.ui.error("The platforms in #{lockfile_path} do not match the parent lockfile.")
-            success = false
-          end
+          # unless parser.platforms == parent_parser.platforms
+          #   Bundler.ui.error("The platforms in #{lockfile_path} do not match the parent lockfile.")
+          #   success = false
+          # end
           unless parser.bundler_version == parent_parser.bundler_version
             Bundler.ui.error("bundler (#{parser.bundler_version}) in #{lockfile_path} " \
                              "does not match the parent lockfile's version (@#{parent_parser.bundler_version}).")

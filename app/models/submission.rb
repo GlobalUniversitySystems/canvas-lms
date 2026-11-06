@@ -2871,6 +2871,8 @@ class Submission < ActiveRecord::Base
   def hide_grade_from_student?(for_plagiarism: false)
     return false if for_plagiarism
 
+    return true if assignment.feedback_release_date && (assignment.feedback_release_date > Time.zone.now)
+
     if assignment.post_manually?
       posted_at.blank?
     else

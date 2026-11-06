@@ -273,8 +273,14 @@ module PostgreSQLAdapterExtensions
     ["UPDATE", "DELETE"].each do |operation|
       trigger_name = "guard_excessive_#{operation.downcase}s"
 
+      if force
+        execute(<<~SQL.squish)
+          DROP TRIGGER IF EXISTS #{trigger_name} ON #{quote_table_name(table_name)};
+        SQL
+      end
+
       execute(<<~SQL.squish)
-        CREATE #{"OR REPLACE " if force}TRIGGER #{trigger_name}
+        CREATE TRIGGER #{trigger_name}
           AFTER #{operation}
           ON #{quote_table_name(table_name)}
           REFERENCING OLD TABLE AS oldtbl

@@ -59,7 +59,7 @@ class GradeSummaryAssignmentPresenter
   end
 
   def hide_grade_from_student?
-    submission.blank? || submission.hide_grade_from_student?
+    submission.blank? || submission.hide_grade_from_student? || (assignment.feedback_release_date && assignment.feedback_release_date > Time.zone.now)
   end
 
   def graded?

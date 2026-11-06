@@ -172,6 +172,15 @@ export default function CoursesToolbar({
                   </Grid.Col>
                   <Grid.Col width="auto">
                     <Checkbox
+                      checked={draftFilters.hide_concluded}
+                      onChange={e =>
+                        onUpdateFilters({hide_concluded: e.target.checked ? true : null})
+                      }
+                      label={I18n.t('Hide completed courses')}
+                    />
+                  </Grid.Col>
+                  <Grid.Col width="auto">
+                    <Checkbox
                       checked={draftFilters.public}
                       onChange={e => onUpdateFilters({public: e.target.checked ? true : null})}
                       label={I18n.t('Show only public courses')}
@@ -210,6 +219,7 @@ CoursesToolbar.propTypes = {
     search_by: oneOf(['course', 'teacher']).isRequired,
     search_term: string.isRequired,
     enrollment_term_id: string.isRequired,
+    hide_concluded: bool,
   }).isRequired,
   errors: shape({search_term: string}).isRequired,
   terms: termsPropType,

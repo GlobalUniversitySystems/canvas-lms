@@ -41,6 +41,7 @@ const defaultFilters = {
   sort: 'sis_course_id',
   order: 'asc',
   search_by: 'course',
+  hide_concluded: true,
   page: null,
 }
 

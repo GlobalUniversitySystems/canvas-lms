@@ -20,7 +20,7 @@
 # NOTE: Indented gems are meant to indicate optional dependencies of parent gems
 
 gem "bootsnap", "~> 1.16", require: false
-gem "rails", "~> 7.1.3"
+gem "rails", "7.1.3.4"
   # can't upgrade to 3.1 until Rails 7.2
   # if rack is updated, please remove gems/autoextend/lib/rack/
   gem "rack", "~> 3.0.11" if $canvas_rails == "7.1"

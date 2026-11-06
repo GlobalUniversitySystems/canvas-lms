@@ -53,7 +53,7 @@
 // These overrides are only here because the Dashboard cards don't fully use InstUI.
 // Once they are on InstUI they can be removed
 .ic-DashboardCard__box {
-  font-family: "Balsamiq Sans", "Lato Extended", "Lato", "Helvetica Neue", Helvetica, Arial, sans-serif;
+  font-family: Arial, "Balsamiq Sans", "Lato Extended", "Lato", "Helvetica Neue", Helvetica, sans-serif;
 
   & h1, h2, h3, h4, h5, h6 {
     font-family: inherit;

@@ -2288,7 +2288,7 @@ class CoursesController < ApplicationController
         check_incomplete_registration
 
         unless @context.elementary_subject_course?
-          add_crumb(@context.nickname_for(@current_user, :short_name), url_for(@context), id: "crumb_#{@context.asset_string}")
+          add_crumb(@context.nickname_for(@current_user, :short_name), url_for(@context), id: "crumb_#{@context.asset_string}", title: @context.nickname_for(@current_user, :short_name))
         end
         GuardRail.activate(:primary) do
           set_badge_counts_for(@context, @current_user)

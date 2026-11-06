@@ -908,6 +908,11 @@ export default (AssignmentListItemView = (function () {
       if (json.gradingType === 'not_graded') {
         json.hideGrade = true
       }
+
+      if (json.externalToolCustomParams && json.externalToolCustomParams.default_feedbackreleasedate && (new Date(json.externalToolCustomParams.default_feedbackreleasedate) > new Date())) {
+        json.hideGrade = true
+      }
+
       return json
     }
 
