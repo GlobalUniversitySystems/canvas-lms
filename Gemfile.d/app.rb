@@ -24,6 +24,7 @@ else
 end
 
 gem 'rack', '2.0.7'
+gem 'ice_cube', '0.16.3'
 
 gem 'oauth2', '1.4.2', require: false
 
@@ -73,7 +74,7 @@ gem 'ffi', '1.11.1', require: false
 gem 'hashery', '2.1.2', require: false
 gem 'highline', '2.0.2', require: false
 gem 'httparty', '0.17.1'
-gem 'i18n', '1.0.0'
+gem 'i18n', '~> 0.9.5'
 gem 'i18nliner', '0.1.1'
   gem 'ruby2ruby', '2.4.4', require: false
   gem 'ruby_parser', '3.14.0', require: false

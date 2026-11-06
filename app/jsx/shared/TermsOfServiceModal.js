@@ -85,7 +85,8 @@ export default class TermsOfServiceModal extends React.Component {
       <span id="terms_of_service_modal">
         <a
           className="terms_link"
-          href="#"
+          href="https://www.instructure.com/policies/acceptable-use"
+          target="_blank"
           ref={c => {
             this.link = c
           }}

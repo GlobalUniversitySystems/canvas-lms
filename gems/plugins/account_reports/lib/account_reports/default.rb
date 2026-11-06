@@ -70,6 +70,18 @@ module AccountReports
       CourseReports.new(account_report).course_storage
     end
 
+    def self.student_enrollments_csv(account_report)
+      CourseReports.new(account_report).student_enrollments
+    end
+
+    def self.page_views_for_course_csv(account_report)
+      CourseReports.new(account_report).page_views_for_course
+    end
+
+    def self.page_views_for_sub_account_csv(account_report)
+      CourseReports.new(account_report).page_views_for_sub_account
+    end
+
     def self.unused_courses_csv(account_report)
       CourseReports.new(account_report).unused_courses
     end

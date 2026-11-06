@@ -152,6 +152,7 @@ module Autoextend::ActiveSupport
       Autoextend.const_added(constant, source: :'ActiveSupport::Dependencies')
       # check for nested constants
       constant.constants(false).each do |child|
+        next if child.to_s == 'Tests' || child.to_s.include?('Tests') || child.to_s.include?('Specs')
         child_const = constant.const_get(child, false)
         next unless child_const.is_a?(Module)
         notify_autoextend_of_new_constant(child_const)

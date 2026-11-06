@@ -300,6 +300,39 @@ module AccountReports
             }
           }
         },
+        'page_views_for_course_csv' => {
+          :title => proc { I18n.t('Page views for course') },
+          :description_partial => false,
+          :parameters_partial => 'course_id_parameters',
+          :parameters => {
+            :course_id => {
+              :required => true,
+              :description => 'Course Id'
+            }
+          }
+        },
+        'page_views_for_sub_account_csv' => {
+          :title => proc { I18n.t('Page views for sub account') },
+          :description_partial => false,
+          :parameters_partial => 'sub_account_id_parameters',
+          :parameters => {
+            :sub_account_id => {
+              :required => true,
+              :description => 'SubAccount Id'
+            }
+          }
+        },
+        'student_enrollments_csv' => {
+          :title => proc { I18n.t('Student Enrollments') },
+          :description_partial => false,
+          :parameters_partial => 'sub_account_id_parameters',
+          :parameters => {
+            :sub_account_id => {
+              :required => true,
+              :description => 'SubAccount Id'
+            }
+          }
+        },
         'course_storage_csv' => {
           :title => proc { I18n.t('Course Storage') },
           :description_partial => true,

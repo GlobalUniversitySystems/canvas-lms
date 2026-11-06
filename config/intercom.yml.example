@@ -1,0 +1,5 @@
+production:
+  app_id: <%= ENV['INTERCOM_APP_ID'] %>
+  api_key: <%= ENV['INTERCOM_APP_KEY'] %>
+  secret_key: <%= ENV['INTERCOM_SECRET_KEY'] %>
+  access_token: <%= ENV['INTERCOM_ACCESS_TOKEN'] %>

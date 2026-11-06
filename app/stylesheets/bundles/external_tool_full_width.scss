@@ -22,6 +22,7 @@ body.ic-full-screen-lti-tool .tool_content_wrapper {
   // Full-width external tools hide footer, so
   // we know iframe container height can stay 100vh
   height: 100vh;
+  padding-bottom: 90px;
 }
 
 #footer {

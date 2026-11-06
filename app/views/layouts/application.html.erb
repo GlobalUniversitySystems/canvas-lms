@@ -217,5 +217,29 @@
   <% end %>
   <%= render :partial => 'layouts/foot', :locals => { :include_common_bundle => true } %>
 </div> <!-- #application -->
+<% if @current_user && @current_user.is_eligible_for_intercom? %>
+  <%= render :partial => 'layouts/intercom' if @current_user && @current_user.is_eligible_for_intercom? %>
+<% end %>
+
+<% if @current_user && @current_user.ee_member? %>
+  <script>
+    document.addEventListener('DOMContentLoaded', function(){
+      Intercom('update', {
+        "hide_default_launcher": true
+      });
+    }, false);
+  </script>
+<% end %>
+
+<script type="text/javascript">
+  (function (w) {
+    var s = document.createElement('script');
+    s.src = 'https://survey.survicate.com/workspaces/be8eb0aaeb78e678c623d1cf7548c9bb/web_surveys.js';
+    s.async = true;
+    var e = document.getElementsByTagName('script')[0];
+    e.parentNode.insertBefore(s, e);
+  })(window);
+</script>
+
 </body>
 </html>

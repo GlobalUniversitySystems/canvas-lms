@@ -1,3 +1,13 @@
+production:
+  page_views:
+    servers:
+    - <%= ENV['CASSANDRA_SERVER_WITH_PORT'] %>
+    keyspace: <%= ENV['CASSANDRA_PAGE_VIEWS_KEYSPACE'] %>
+  auditors:
+    servers:
+    - <%= ENV['CASSANDRA_SERVER_WITH_PORT'] %>
+    keyspace: <%= ENV['CASSANDRA_AUDITORS_KEYSPACE'] %>
+
 # This file is used to configure any Apache Cassandra clusters that Canvas is
 # going to use. Currently, all Cassandra usage is optional and disabled by
 # default.

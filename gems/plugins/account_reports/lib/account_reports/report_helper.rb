@@ -90,6 +90,14 @@ module AccountReports::ReportHelper
     end
   end
 
+  def course_id
+    @course_id ||= @account_report.value_for_param("course_id")
+  end
+
+  def sub_account_id
+    @sub_account_id ||= @account_report.value_for_param("sub_account_id")
+  end
+
   def assignment_group
     if (assignment_group_id = @account_report.value_for_param("assignment_group_id") ||
       @account_report.value_for_param("assignment_group"))

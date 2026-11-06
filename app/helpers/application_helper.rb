@@ -871,7 +871,7 @@ module ApplicationHelper
     @agree_to_terms ||
     t("I agree to the *terms of use*.",
       wrapper: {
-        '*' => link_to('\1', "#", class: 'terms_of_service_link'),
+        '*' => link_to('\1', "https://www.instructure.com/policies/acceptable-use", target: '_blank', class: 'terms_of_service_link'),
       })
   end
 

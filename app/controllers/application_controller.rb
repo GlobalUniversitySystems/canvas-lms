@@ -1194,7 +1194,7 @@ class ApplicationController < ActionController::Base
     # We only record page_views for html page requests coming from within the
     # app, or if coming from a developer api request and specified as a
     # page_view.
-    if @current_user && !request.xhr? && request.get?
+    if @current_user && !request.xhr? && !api_request? && request.get?
       generate_page_view
     end
   end

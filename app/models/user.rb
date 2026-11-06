@@ -181,6 +181,25 @@ class User < ActiveRecord::Base
 
   include FeatureFlags
 
+  def is_eligible_for_intercom?
+    ee_acc = Account.find(964)
+    if ee_acc
+      users = ee_acc.users
+      return false if users.include?(self)
+    end
+
+    !ee_member?
+  end
+
+  def ee_member?
+    acc_ids = courses.pluck(:account_id)
+    return true if acc_ids.include?(964)
+
+    Account.where(id: acc_ids).any? do |acc|
+      acc.account_chain_ids.include?(964)
+    end
+  end
+
   def conversations
     # i.e. exclude any where the user has deleted all the messages
     all_conversations.visible.order("last_message_at DESC, conversation_id DESC")

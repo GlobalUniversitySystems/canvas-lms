@@ -55,7 +55,10 @@ var quizSubmission = (function() {
     $countdownSeconds = $('.countdown_seconds'),
     $timeRunningTimeRemaining = $('.time_running,.time_remaining'),
     $lastSaved = $('#last_saved_indicator')
-
+  const $timeRunningFunc = function() {
+    if ($timeRunningTimeRemaining.length > 0) return $timeRunningTimeRemaining
+    return ($timeRunningTimeRemaining = $('.time_running,.time_remaining'))
+  }
   return {
     countDown: null,
     fiveMinuteDeadline: false,
@@ -153,9 +156,9 @@ var quizSubmission = (function() {
             }
             if (data && data.end_at) {
               const endAtFromServer = Date.parse(data.end_at),
-                submissionEndAt = Date.parse(endAt.text()),
+                submissionEndAt = Date.parse($('.end_at').text()),
                 serverEndAtTime = endAtFromServer.getTime(),
-                submissionEndAtTime = submissionEndAt.getTime()
+                submissionEndAtTime = Date.parse($('.end_at').text()).getTime()
 
               quizSubmission.timeLeft = data.time_left * 1000
 
@@ -399,6 +402,18 @@ var quizSubmission = (function() {
       const hr = date.getUTCHours()
       const min = date.getUTCMinutes()
       const sec = date.getUTCSeconds()
+      if (Number.isNaN(Number(min)) || Number.isNaN(Number(sec))) {
+        // display a helpful message instead of a NaN time
+        $('.time_header').hide()
+        $('.hide_time_link').hide()
+        $('.time_running').css('color', '#EA0611')
+        $timeRunningFunc().text(
+          I18n.t(
+            "Your browser connectivity may be slow or unstable. In spite of your browser's timer being disconnected, your answers will be recorded for an additional 5 minutes beyond the original time limit on this attempt."
+          )
+        )
+        return
+      }
       const times = []
       if (yr) {
         times.push(I18n.t('years_count', 'Year', {count: yr}))
@@ -418,7 +433,7 @@ var quizSubmission = (function() {
       if (true || sec) {
         times.push(I18n.t('seconds_count', 'Second', {count: sec}))
       }
-      $timeRunningTimeRemaining.text(times.join(', '))
+      $timeRunningFunc().text(times.join(', '))
     },
 
     updateFinalSubmitButtonState() {

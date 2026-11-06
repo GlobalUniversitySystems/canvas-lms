@@ -43,6 +43,140 @@ module AccountReports
       csv(default_courses.active.where(is_public: true))
     end
 
+    def student_enrollments
+      headers = []
+      headers << 'course_id'
+      headers << 'course_name'
+      headers << 'number_of_students'
+
+      account = Account.find(sub_account_id) rescue root_account
+
+      account_courses = account.courses.active
+
+      courses = account_courses.select("courses.id, courses.name, count(enrollments.id) as ecount").joins('right outer JOIN "enrollments" ON "enrollments"."course_id" = "courses"."id"').where("enrollments.type in ('StudentEnrollment') and enrollments.workflow_state NOT IN ('rejected', 'completed', 'deleted', 'inactive')").group('courses.id')
+
+      write_report headers do |csv|
+        courses.each do |c|
+          row = []
+
+          row << c&.id
+          row << c&.name
+          row << c&.ecount
+
+          csv << row
+        end
+
+        (account_courses - courses).each do |c|
+          row = []
+
+          row << c&.id
+          row << c&.name
+          row << 0
+
+          csv << row
+        end
+      end
+    end
+
+    def page_views_for_sub_account
+      headers = []
+      headers << 'course_id'
+      headers << 'course_name'
+      headers << 'page_views'
+      headers << 'participations'
+
+      account = Account.find(sub_account_id)
+      admin = User.first
+
+      courses = account.courses.active
+
+      data = {}
+
+      courses.each do |course|
+        data[course.id] = Analytics::Course.new(admin, course).page_views_by_student.values
+      end
+
+
+      write_report headers do |csv|
+        data.each do |course_id, data_array|
+          row = []
+
+          row << course_id
+          row << courses.find(course_id)&.name
+          row << data_array.sum { |h| h[:page_views] }
+          row << data_array.sum { |h| h[:participations] }
+
+          csv << row
+        end
+      end
+    end
+
+    def page_views_for_course
+      headers = []
+      headers << 'course_id'
+      headers << 'course_name'
+      headers << 'page'
+      headers << 'views'
+
+      course = Course.find(course_id)
+      students = course.students
+      admin = User.first
+
+      data = []
+
+      students.each do |s|
+        participations = Analytics::StudentInCourse.new(admin, course, s).participations
+        data << participations if participations.present?
+      end
+
+      data.flatten!
+
+      urls = data.map { |h| h['url'] }
+
+      hash = Hash.new(0)
+
+      urls.each do |v|
+        hash[v] += 1
+      end
+
+      write_report headers do |csv|
+        hash.each do |k, v|
+          row = []
+
+          row << course_id
+          row << course&.name
+          row << k
+          row << v
+
+          csv << row
+        end
+      end
+    end
+
+    # def course_page_views
+    #   headers = []
+    #   headers << 'course name'
+    #   headers << 'page url'
+    #   headers << 'counter'
+    #
+    #   courses = root_account.all_courses.active.to_a
+    #   ids = courses.pluck(:id)
+    #
+    #   students_ids = students.pluck(:id)
+    #
+    #   pages = PageView.select('count(request_id) as counter, page_views.url, page_views.context_id').where(context_type: 'Course', context_id: ids, user_id: students_ids).where('page_views.created_at > ? and page_views.created_at < ?', start_at, end_at).group('page_views.url, page_views.context_id').order('context_id desc')
+    #
+
+    # end
+    #
+    # def students
+    #   User.all.to_a.select do |u|
+    #     roles = u.roles(root_account)
+    #
+    #     u if roles.size == 2 && roles.sort == ["student", "user"]
+    #   end
+    # end
+
     def unpublished_courses
       csv(default_courses.where(:workflow_state => ['claimed', 'created']))
     end
