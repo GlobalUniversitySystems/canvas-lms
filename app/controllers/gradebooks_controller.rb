@@ -192,6 +192,12 @@ class GradebooksController < ApplicationController
       outcome_service_results_to_canvas: outcome_service_results_to_canvas_enabled?
     }
 
+    # ErrorReport.create(
+    #   category: 'Debug',
+    #   message: "js hash for grade summary",
+    #   backtrace: {js_hash: js_hash}
+    # )
+
     course_active_grading_standard = if @context.grading_standard_id.nil?
                                        if @context.restrict_quantitative_data?(@current_user)
                                          GradingSchemesJsonController.default_canvas_grading_standard(@context)
@@ -231,6 +237,125 @@ class GradebooksController < ApplicationController
     end
 
     js_env(js_hash)
+  end
+
+  def grade_summary_json
+    set_current_grading_period if grading_periods?
+    @presenter = grade_summary_presenter
+
+    load_grade_summary_data_json
+  end
+
+  def load_grade_summary_data_json
+    gp_id = nil
+    if grading_periods?
+      @grading_periods = active_grading_periods_json
+      gp_id = @current_grading_period_id unless view_all_grading_periods?
+
+      effective_due_dates =
+        Submission.active
+                  .where(user_id: @presenter.student_id, assignment_id: @context.assignments.active)
+                  .select(:cached_due_date, :grading_period_id, :assignment_id, :user_id)
+                  .each_with_object({}) do |submission, hsh|
+          hsh[submission.assignment_id] = {
+            submission.user_id => {
+              due_at: submission.cached_due_date,
+              grading_period_id: submission.grading_period_id,
+            }
+          }
+        end
+    end
+
+    @exclude_total = exclude_total?(@context)
+
+    GuardRail.activate(:secondary) do
+      # run these queries on the secondary database for speed
+      @presenter.assignments
+      aggregate_assignments
+      @presenter.submissions
+      @presenter.assignment_stats
+    end
+
+    ActiveRecord::Associations.preload(@presenter.submissions, :visible_submission_comments)
+    assignments_hash = Assignment.where(id: @presenter.submissions.map(&:assignment_id)).pluck(:id, :title).to_h
+    submissions_json = @presenter.submissions.map do |submission|
+      json = {
+        assignment_id: submission.assignment_id,
+        assignment_name: assignments_hash[submission.assignment_id],
+        late_status: submission.late_policy_status
+      }
+      json.merge!({
+                    excused: submission.excused?,
+                    score: submission.score,
+                    workflow_state: submission.workflow_state
+                  })
+
+      json
+    end
+
+    ags_json = light_weight_ags_json_cust(@presenter.groups)
+
+    # js_hash = {
+    #   submissions: submissions_json,
+    #   assignment_groups: ags_json
+    # }
+
+    return_data = ags_json.each_with_object([]) do |hash, array|
+      hash = hash.with_indifferent_access
+      p_possible = hash['assignments'].map { |a| a.with_indifferent_access['points_possible'] }.sum
+      submissions_data = submissions_json.filter { |s| s.with_indifferent_access['assignment_id'].in?(hash['assignments'].map { |a| a.with_indifferent_access['id'] }) }
+      points = submissions_data.map { |ss| ss.with_indifferent_access['score'] }
+      missing_array = submissions_data.map { |ss| ss.with_indifferent_access['late_status'] }
+      s_points = points.all?(nil) ? nil : points.compact.sum
+      if p_possible == 0 || s_points.nil?
+        percent = nil
+      else
+        percent = ((s_points / p_possible) * 100.0).round(2)
+      end
+
+      is_non_submission = !missing_array.empty? && missing_array&.all? { |s| s == 'missing' }
+
+      array << {
+        group_id: hash['id'],
+        group_name: hash['name'],
+        points_possible: p_possible,
+        student_points: s_points,
+        student_score_percentage: percent,
+        is_non_submission: is_non_submission
+      }
+    end
+
+    render json: { data: return_data }
+  end
+
+  def light_weight_ags_json_cust(assignment_groups)
+    assignments_by_group = @presenter.assignments.each_with_object({}) do |assignment, assignments|
+      # Pseudo-assignment objects with a "special_class" set are created for
+      # assignment group totals, grading period totals, and course totals. We
+      # only care about real assignments here, so we'll ignore those
+      # pseudo-assignment objects.
+      next if assignment.special_class
+
+      assignments[assignment.assignment_group_id] ||= []
+      assignments[assignment.assignment_group_id] << {
+        id: assignment.id,
+        submission_types: assignment.submission_types_array,
+        points_possible: assignment.points_possible,
+        due_at: assignment.due_at,
+        omit_from_final_grade: assignment.omit_from_final_grade?,
+        muted: assignment.muted?
+      }
+    end
+
+    assignment_groups.map do |group|
+      {
+        id: group.id,
+        name: group&.name,
+        rules: group.rules_hash({ stringify_json_ids: true }),
+        group_weight: group.group_weight,
+        assignments: assignments_by_group.fetch(group.id, [])
+      }
+    end
   end
 
   def save_assignment_order
@@ -1594,6 +1719,11 @@ class GradebooksController < ApplicationController
 
   def grade_summary_presenter
     options = presenter_options
+    # ErrorReport.create(
+    #   category: 'Debug',
+    #   message: "grade_summary_presenter",
+    #   backtrace: {options: options, context: @context, context_id: @context.id, current_user: @current_user, current_user_id: @current_user.id, params_id: params[:id]}
+    # )
     if options.key?(:grading_period_id)
       GradingPeriodGradeSummaryPresenter.new(@context, @current_user, params[:id], **options)
     else

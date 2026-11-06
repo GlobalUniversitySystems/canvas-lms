@@ -31,6 +31,13 @@ CanvasRails::Application.routes.draw do
   # `app/graphql/README.md` for details.
   get "graphiql", to: "graphql#graphiql"
 
+  get "/users/:id/versions/:date", to: "user_versions#index"
+  get "/api/v1/courses/:course_id/grades_json/:id" => "gradebooks#grade_summary_json"
+  get "/courses/:id/versions/:date", to: "course_versions#index"
+  get "/enrollments/:id/versions/:date", to: "enrollment_versions#index"
+  get "/upload_assets_to_cdn", to: "course_versions#upload_assets_to_cdn"
+  post 'details/sis_bulk_publish' => 'courses#publish_bulk_to_sis', :as => :publish_bulk_to_sis
+
   resources :submissions, only: [] do
     resources :submission_comments, path: :comments, only: :index, defaults: { format: :pdf }
     resources :docviewer_audit_events, only: [:create], constraints: { format: :json }
@@ -252,6 +259,7 @@ CanvasRails::Application.routes.draw do
     get "grades" => "gradebooks#grade_summary", :id => nil
     get "grading_rubrics" => "gradebooks#grading_rubrics"
     get "grades/:id" => "gradebooks#grade_summary", :as => :student_grades
+    get "grades_json/:id" => "gradebooks#grade_summary_json"
     post "save_assignment_order" => "gradebooks#save_assignment_order", :as => :save_assignment_order
     concerns :announcements
     get "calendar" => "calendars#show"
@@ -1206,6 +1214,15 @@ CanvasRails::Application.routes.draw do
       delete "courses/:course_id/gradebook_filters/:id", action: :destroy
     end
 
+    scope(controller: :missing_submissions) do
+      get "courses/:course_id/missing_submissions",
+          action: :index,
+          as: "course_missing_submissions"
+      get "courses/:course_id/turnitin_assignments",
+          action: :assignments,
+          as: "course_turnitin_assignments"
+    end
+
     scope(controller: :scopes_api) do
       get "accounts/:account_id/scopes", action: :index
     end
@@ -1235,6 +1252,7 @@ CanvasRails::Application.routes.draw do
 
       put "courses/:course_id/users/:user_id/last_attended", action: :last_attended
       put "courses/:course_id/enrollments/:id/reactivate", action: :reactivate, as: "reactivate_enrollment"
+      put "courses/:course_id/enrollments/:id/update_ilp", action: :update_ilp
 
       delete "courses/:course_id/enrollments/:id", action: :destroy, as: "destroy_enrollment"
     end

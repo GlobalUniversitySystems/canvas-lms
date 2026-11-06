@@ -103,6 +103,7 @@ function Assignment() {
   this.newQuizzesAssignmentBuildButtonEnabled =
     this.newQuizzesAssignmentBuildButtonEnabled.bind(this)
   this.hideZeroPointQuizzesOptionEnabled = this.hideZeroPointQuizzesOptionEnabled.bind(this)
+  this.currentUserCanLockAssignment = this.currentUserCanLockAssignment.bind(this)
   this.submissionTypeSelectionTools = this.submissionTypeSelectionTools.bind(this)
   this.dueDateRequiredForAccount = this.dueDateRequiredForAccount.bind(this)
   this.maxNameLengthRequiredForAccount = this.maxNameLengthRequiredForAccount.bind(this)
@@ -142,6 +143,7 @@ function Assignment() {
   this.restrictFileExtensions = this.restrictFileExtensions.bind(this)
   this.notifyOfUpdate = this.notifyOfUpdate.bind(this)
   this.peerReviewsAssignAt = this.peerReviewsAssignAt.bind(this)
+  this.teacherAccessLockAt = this.teacherAccessLockAt.bind(this)
   this.peerReviewCount = this.peerReviewCount.bind(this)
   this.automaticPeerReviews = this.automaticPeerReviews.bind(this)
   this.anonymousPeerReviews = this.anonymousPeerReviews.bind(this)
@@ -684,6 +686,29 @@ Assignment.prototype.peerReviewsAssignAt = function (date) {
   return this.set('peer_reviews_assign_at', date)
 }
 
+Assignment.prototype.teacherAccessLockAt = function (date) {
+  if (!(arguments.length > 0)) {
+    let dt = this.get('teacher_access_lock_at') || null
+
+    if (dt === null) {
+      return null
+    } else {
+      let parsedDT = new Date(dt);
+      if (!isNaN(parsedDT)) {
+        const year = parsedDT.getFullYear();
+        const month = String(parsedDT.getMonth() + 1).padStart(2, '0');
+        const day = String(parsedDT.getDate()).padStart(2, '0');
+        const hours = String(parsedDT.getHours()).padStart(2, '0');
+        const minutes = String(parsedDT.getMinutes()).padStart(2, '0');
+
+        return `${year}-${month}-${day}T${hours}:${minutes}`;
+      }
+    }
+  }
+
+  return this.set('teacher_access_lock_at', date)
+}
+
 Assignment.prototype.intraGroupPeerReviews = function () {
   return this.get('intra_group_peer_reviews')
 }
@@ -1028,6 +1053,10 @@ Assignment.prototype.hideZeroPointQuizzesOptionEnabled = function () {
   return ENV.HIDE_ZERO_POINT_QUIZZES_OPTION_ENABLED
 }
 
+Assignment.prototype.currentUserCanLockAssignment = function () {
+  return ENV.CURRENT_USER_CAN_LOCK_ASSIGNMENT
+}
+
 Assignment.prototype.showBuildButton = function () {
   return this.isQuizLTIAssignment() && this.newQuizzesAssignmentBuildButtonEnabled()
 }
@@ -1253,6 +1282,7 @@ Assignment.prototype.toView = function () {
     'name',
     'newQuizzesAssignmentBuildButtonEnabled',
     'hideZeroPointQuizzesOptionEnabled',
+    'currentUserCanLockAssignment',
     'nonBaseDates',
     'notifyOfUpdate',
     'objectTypeDisplayName',
@@ -1261,6 +1291,7 @@ Assignment.prototype.toView = function () {
     'peerReviewCount',
     'peerReviews',
     'peerReviewsAssignAt',
+    'teacherAccessLockAt',
     'pointsPossible',
     'position',
     'postToSIS',

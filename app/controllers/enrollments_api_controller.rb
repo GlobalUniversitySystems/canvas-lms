@@ -716,7 +716,8 @@ class EnrollmentsApiController < ApplicationController
       :start_at,
       :end_at,
       :self_enrolled,
-      :no_notify
+      :no_notify,
+      :ilp
     )
 
     SubmissionLifecycleManager.with_executing_user(@current_user) do
@@ -724,9 +725,22 @@ class EnrollmentsApiController < ApplicationController
     end
 
     if @enrollment.valid?
+      @enrollment.ilp = params[:enrollment][:ilp]
+      @enrollment.save
       render(json: enrollment_json(@enrollment, @current_user, session))
     else
       render(json: @enrollment.errors, status: :bad_request)
+    end
+  end
+
+  def update_ilp
+    GuardRail.activate(:secondary) do
+      enrollment = @context.all_enrollments.find(params[:id])
+
+      enrollment.ilp = params[:ilp]
+      enrollment.save!
+
+      render json: { success: true }
     end
   end
 
@@ -800,7 +814,16 @@ class EnrollmentsApiController < ApplicationController
       return render_unauthorized_action
     end
 
+    enr_attrs = @enrollment.attributes.to_yaml
+
     if @enrollment.send(action)
+      @enrollment.versions.create(
+        {
+          event: "enrollment_destroy with action: #{action}",
+          object: enr_attrs,
+          whodunnit: @current_user.id
+        }
+      ) rescue nil
       render json: enrollment_json(@enrollment, @current_user, session)
     else
       render json: @enrollment.errors, status: :bad_request
@@ -833,6 +856,13 @@ class EnrollmentsApiController < ApplicationController
     return render(json: { error: "no current invitation" }, status: :bad_request) unless @enrollment.invited?
 
     @enrollment.accept!
+    @enrollment.versions.create(
+      {
+        event: "enrollment_accept with action",
+        object: @enrollment.attributes.to_yaml,
+        whodunnit: @current_user.id
+      }
+    ) rescue nil
     render json: { success: true }
   end
 
@@ -857,6 +887,13 @@ class EnrollmentsApiController < ApplicationController
     return render(json: { error: "no current invitation" }, status: :bad_request) unless @enrollment.invited?
 
     @enrollment.reject!
+    @enrollment.versions.create(
+      {
+        event: "enrollment_reject with action",
+        object: @enrollment.attributes.to_yaml,
+        whodunnit: @current_user.id
+      }
+    ) rescue nil
     render json: { success: true }
   end
 
@@ -880,6 +917,13 @@ class EnrollmentsApiController < ApplicationController
     end
 
     if @enrollment.reactivate
+      @enrollment.versions.create(
+        {
+          event: "enrollment_reactivate with action",
+          object: @enrollment.attributes.to_yaml,
+          whodunnit: @current_user.id
+        }
+      ) rescue nil
       render json: enrollment_json(@enrollment, @current_user, session)
     else
       render json: @enrollment.errors, status: :bad_request

@@ -1,0 +1,62 @@
+<p><%= t('account_reports.default.user_asset_access.text',
+         %{This report shows all asset access data for a specific user, including what resources they have viewed or interacted with in courses.}) %></p>
+
+<h3><%= t('#account_reports.default.description.header', %{Example}) %></h3>
+
+<table class="report_example">
+  <thead>
+  <tr>
+    <th><%= t('#account_reports.report_header_user_id', %{user id}) %></th>
+    <th><%= t('#account_reports.report_header_user_name', %{user name}) %></th>
+    <th><%= t('#account_reports.report_header_asset_code', %{asset code}) %></th>
+    <th><%= t('#account_reports.report_header_asset_category', %{asset category}) %></th>
+    <th><%= t('#account_reports.report_header_context_name', %{context name}) %></th>
+    <th><%= t('#account_reports.report_header_display_name', %{display name}) %></th>
+    <th><%= t('#account_reports.report_header_view_score', %{view score}) %></th>
+    <th><%= t('#account_reports.report_header_participate_score', %{participate score}) %></th>
+    <th><%= t('#account_reports.report_header_action_level', %{action level}) %></th>
+    <th><%= t('#account_reports.report_header_last_access', %{last access}) %></th>
+  </tr>
+  </thead>
+  <tbody>
+  <tr>
+    <td>12345</td>
+    <td>Smith, John</td>
+    <td>assignment_67890</td>
+    <td>assignments</td>
+    <td>Introduction to Biology</td>
+    <td>Lab Report 1</td>
+    <td>5</td>
+    <td>1</td>
+    <td>participate</td>
+    <td>2024-01-15 14:30:00</td>
+  </tr>
+  <tr>
+    <td>12345</td>
+    <td>Smith, John</td>
+    <td>discussion_topic_54321</td>
+    <td>topics</td>
+    <td>Introduction to Biology</td>
+    <td>Week 1 Discussion</td>
+    <td>3</td>
+    <td>0</td>
+    <td>view</td>
+    <td>2024-01-10 09:15:00</td>
+  </tr>
+  <tr>
+    <td>12345</td>
+    <td>Smith, John</td>
+    <td>attachment_98765</td>
+    <td>files</td>
+    <td>Introduction to Biology</td>
+    <td>syllabus.pdf</td>
+    <td>2</td>
+    <td>0</td>
+    <td>view</td>
+    <td>2024-01-08 16:45:00</td>
+  </tr>
+  </tbody>
+</table>
+
+<p><%= t('account_reports.default.user_asset_access.note',
+         %{Note: This report includes all asset access records for the specified user across all courses and contexts they have access to. The view_score indicates how many times the user has viewed the asset, while participate_score indicates active participation (like submitting assignments).}) %></p>

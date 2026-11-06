@@ -204,6 +204,7 @@ class Submission < ActiveRecord::Base
   attr_accessor :require_submission_type_is_valid
 
   scope :active, -> { where("submissions.workflow_state <> 'deleted'") }
+  scope :unsubmitted, -> { where(workflow_state: "unsubmitted") }
   scope :deleted, -> { where("submissions.workflow_state = 'deleted'") }
   scope :for_enrollments, ->(enrollments) { where(user_id: enrollments.select(:user_id)) }
   scope :with_comments, -> { preload(:submission_comments) }
@@ -2818,6 +2819,8 @@ class Submission < ActiveRecord::Base
 
   def hide_grade_from_student?(for_plagiarism: false)
     return false if for_plagiarism
+
+    return true if assignment.feedback_release_date && (assignment.feedback_release_date > Time.zone.now)
 
     if assignment.post_manually?
       posted_at.blank?

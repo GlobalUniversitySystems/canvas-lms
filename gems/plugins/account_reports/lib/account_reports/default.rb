@@ -110,5 +110,13 @@ module AccountReports
     def self.developer_key_report_csv(account_report)
       DeveloperKeyReports.new(account_report).dev_key_report
     end
+
+    def self.assignment_export_csv(account_report)
+      AssignmentReports.new(account_report).assignment_export
+    end
+
+    def self.user_asset_access_csv(account_report)
+      AssetUserAccessReports.new(account_report).user_asset_access_csv
+    end
   end
 end

@@ -48,39 +48,77 @@
                                              :student_only => true)
   %>
 
-  <a
-    data-track-category="dashboard"
-    data-track-label="recent feedback"
-    class="recent_feedback_icon" href="<%= url %>"
-  >
-    <i class="<%= icon_class %>"></i>
-    <div class="event-details">
-      <% if comment && comment.media_comment? %>
-        <% kaltura_thumbnail_url = CanvasKaltura::ClientV3.new.thumbnail_url(comment.media_comment_id, :width => 50, :height => 35, :bgcolor => "F3F4F5") %>
-        <img src="<%= kaltura_thumbnail_url %>" style="max-width: 50px; max-height: 35px; float: <%= direction('right') %>; padding-<%= direction('left') %>: 3px;" alt=""/>
+    <% frd = assignment.feedback_release_date %>
+    <% if frd %>
+      <% if frd < DateTime.now %>
+        <a
+          data-track-category="dashboard"
+          data-track-label="recent feedback"
+          class="recent_feedback_icon" href="<%= url %>"
+        >
+          <i class="<%= icon_class %>"></i>
+          <div class="event-details">
+            <% if comment && comment.media_comment? %>
+              <% kaltura_thumbnail_url = CanvasKaltura::ClientV3.new.thumbnail_url(comment.media_comment_id, :width => 50, :height => 35, :bgcolor => "F3F4F5") %>
+              <img src="<%= kaltura_thumbnail_url %>" style="max-width: 50px; max-height: 35px; float: <%= direction('right') %>; padding-<%= direction('left') %>: 3px;" alt=""/>
+            <% end %>
+            <b class="event-details__title recent_feedback_title">
+              <%= recent_feedback.assignment.title %>
+            </b>
+            <% if show_context %>
+              <p class="event-details__context">
+                <%= context.nickname_for(@current_user, :short_name) %>
+              </p>
+            <% end %>
+            <% if grade %>
+              <% if recent_feedback.assignment.restrict_quantitative_data?(@current_user) && !preserve_grade %>
+                <p><strong><%= recent_feedback.assignment.score_to_grade(score, grade, true) %></strong></p>
+              <% else %>
+                <p><strong><%= grade %></strong></p>
+              <% end %>
+            <% end %>
+            <% if comment_text %>
+              <p>"<%= comment_text %>"</p>
+            <% end %>
+          </div>
+          <div class="clear"></div>
+        </a>
+        <div class="clear"></div>
       <% end %>
-      <b class="event-details__title recent_feedback_title">
-        <%= recent_feedback.assignment.title %>
-      </b>
-      <% if show_context %>
-        <p class="event-details__context">
-          <%= context.nickname_for(@current_user, :short_name) %>
-        </p>
-      <% end %>
-      <% if grade %>
-        <% if recent_feedback.assignment.restrict_quantitative_data?(@current_user) && !preserve_grade %>
-          <p><strong><%= recent_feedback.assignment.score_to_grade(score, grade, true) %></strong></p>
-        <% else %>
-          <p><strong><%= grade %></strong></p>
-        <% end %>
-      <% end %>
-      <% if comment_text %>
-        <p>"<%= comment_text %>"</p>
-      <% end %>
-    </div>
-    <div class="clear"></div>
-  </a>
-  <div class="clear"></div>
-
+    <% else %>
+      <a
+        data-track-category="dashboard"
+        data-track-label="recent feedback"
+        class="recent_feedback_icon" href="<%= url %>"
+      >
+        <i class="<%= icon_class %>"></i>
+        <div class="event-details">
+          <% if comment && comment.media_comment? %>
+            <% kaltura_thumbnail_url = CanvasKaltura::ClientV3.new.thumbnail_url(comment.media_comment_id, :width => 50, :height => 35, :bgcolor => "F3F4F5") %>
+            <img src="<%= kaltura_thumbnail_url %>" style="max-width: 50px; max-height: 35px; float: <%= direction('right') %>; padding-<%= direction('left') %>: 3px;" alt=""/>
+          <% end %>
+          <b class="event-details__title recent_feedback_title">
+            <%= recent_feedback.assignment.title %>
+          </b>
+          <% if show_context %>
+            <p class="event-details__context">
+              <%= context.nickname_for(@current_user, :short_name) %>
+            </p>
+          <% end %>
+          <% if grade %>
+            <% if recent_feedback.assignment.restrict_quantitative_data?(@current_user) && !preserve_grade %>
+              <p><strong><%= recent_feedback.assignment.score_to_grade(score, grade, true) %></strong></p>
+            <% else %>
+              <p><strong><%= grade %></strong></p>
+            <% end %>
+          <% end %>
+          <% if comment_text %>
+            <p>"<%= comment_text %>"</p>
+          <% end %>
+        </div>
+        <div class="clear"></div>
+      </a>
+      <div class="clear"></div>
+    <% end %>
 <% end %>
 </li>

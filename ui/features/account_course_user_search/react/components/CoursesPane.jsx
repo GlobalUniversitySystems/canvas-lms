@@ -29,6 +29,7 @@ import CoursesToolbar from './CoursesToolbar'
 import SearchMessage from './SearchMessage'
 import SRSearchMessage from './SRSearchMessage'
 import {SEARCH_DEBOUNCE_TIME} from './UsersPane'
+import axios from '@canvas/axios'
 
 const I18n = useI18nScope('account_course_user_search')
 
@@ -41,6 +42,7 @@ const defaultFilters = {
   sort: 'sis_course_id',
   order: 'asc',
   search_by: 'course',
+  hide_concluded: true,
   page: null,
 }
 
@@ -59,6 +61,8 @@ class CoursesPane extends React.Component {
       filters: defaultFilters,
       draftFilters: defaultFilters,
       errors: {},
+      selectedCourse: [],
+      isAllCoursesSelect: false,
       previousCourses: {
         data: [],
         loading: true,
@@ -144,6 +148,43 @@ class CoursesPane extends React.Component {
     }, this.fetchCourses)
   }
 
+  onChangeCheckbox = ({
+    courseId,
+  }) => {
+    try {
+      const {selectedCourse} = this.state
+      const isCourseAlreadySelected = selectedCourse.includes(courseId)
+      if (isCourseAlreadySelected) {
+        const filteredCoursesIds = selectedCourse.filter((currentId) => currentId !== courseId)
+        return this.setState({selectedCourse: filteredCoursesIds})
+      }
+      const updatedCourseIds = [...selectedCourse, courseId]
+      this.setState({selectedCourse: updatedCourseIds})
+    } catch (error) {
+      console.log(error);
+    }
+  }
+
+  syncGrades = () => {
+    const {selectedCourse} = this.state;
+
+    if (!selectedCourse.length) {
+      $.flashError("choose at least one course")
+      return
+    }
+
+    axios.post('/details/sis_bulk_publish ', {
+      selected_course: selectedCourse
+    })
+      .then(() => {
+        $.flashMessage("courses synced")
+      })
+      .catch(() => {
+        $.flashError("there was some kind of synchronization error")
+      })
+  }
+
+
   refresh = () => {
     const courses = CoursesStore.get(this.state.filters)
     const lastPage = courses?.links?.last?.page
@@ -163,13 +204,14 @@ class CoursesPane extends React.Component {
   }
 
   render() {
-    const {filters, draftFilters, errors} = this.state
+    const {filters, draftFilters, errors, selectedCourse} = this.state
     let courses = CoursesStore.get(filters)
     if (!courses || !courses.data) {
       courses = this.state.previousCourses
     }
     const terms = TermsStore.get()
     const isLoading = !(courses && !courses.loading)
+    const selectSyncActive = ENV.PERMISSIONS.bulk_push_to_sis;
 
     return (
       <div>
@@ -180,6 +222,8 @@ class CoursesPane extends React.Component {
         <CoursesToolbar
           onUpdateFilters={this.onUpdateFilters}
           onApplyFilters={this.onApplyFilters}
+          syncGrades={this.syncGrades}
+          selectSyncActive={selectSyncActive}
           terms={terms}
           isLoading={isLoading}
           errors={errors}
@@ -191,6 +235,9 @@ class CoursesPane extends React.Component {
 
         <CoursesList
           onChangeSort={this.onChangeSort}
+          selectSyncActive={selectSyncActive}
+          onChangeCheckbox={this.onChangeCheckbox}
+          selectedCourse={selectedCourse}
           accountId={this.props.accountId}
           courses={courses.data}
           roles={this.props.roles}

@@ -810,7 +810,8 @@ class AccountsController < ApplicationController
       else
         name = ActiveRecord::Base.wildcard("courses.name", search_term)
         code = ActiveRecord::Base.wildcard("courses.course_code", search_term)
-        or_clause = Course.where(code).or(Course.where(name))
+        sis_identifier = ActiveRecord::Base.wildcard('courses.sis_identifier', search_term)
+        or_clause = Course.where(code).or(Course.where(name)).or(Course.where(sis_identifier))
 
         if search_term =~ Api::ID_REGEX && Api::MAX_ID_RANGE.cover?(search_term.to_i)
           or_clause = Course.where(id: search_term).or(or_clause)
@@ -1616,7 +1617,8 @@ class AccountsController < ApplicationController
           :manage_groups,
           *RoleOverride::GRANULAR_MANAGE_GROUPS_PERMISSIONS
         ),
-      can_create_enrollments: @account.grants_any_right?(@current_user, session, *add_enrollment_permissions(@account))
+      can_create_enrollments: @account.grants_any_right?(@current_user, session, *add_enrollment_permissions(@account)),
+      bulk_push_to_sis: @account.grants_any_right?(@current_user, session, :bulk_push_to_sis)
     }
     if @account.root_account.feature_enabled?(:temporary_enrollments)
       js_permissions[:can_add_temporary_enrollments] =

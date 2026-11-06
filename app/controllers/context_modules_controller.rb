@@ -356,6 +356,14 @@ class ContextModulesController < ApplicationController
       @module = @context.context_modules.build
       @module.workflow_state = "unpublished"
       @module.attributes = context_module_params
+      @context.versions.create(
+        {
+          event: 'course_module_create',
+          object: @module.to_yaml,
+          object_changes: {module_id: @module.id}.to_yaml,
+          whodunnit: @current_user&.id
+        }
+      ) rescue nil
       respond_to do |format|
         if @module.save
           format.html { redirect_to named_context_url(@context, :context_context_modules_url) }
@@ -704,6 +712,14 @@ class ContextModulesController < ApplicationController
         is_cyoe_able: cyoe_able?(@tag),
         is_duplicate_able: @tag.duplicate_able?
       )
+      @context.versions.create(
+        {
+          event: 'course_module_add_item',
+          object: @module.to_yaml,
+          object_changes: json.to_yaml,
+          whodunnit: @current_user&.id
+        }
+      ) rescue nil
       @context.touch
       render json:
     end
@@ -712,6 +728,14 @@ class ContextModulesController < ApplicationController
   def remove_item
     @tag = @context.context_module_tags.not_deleted.find(params[:id])
     if authorized_action(@tag.context_module, @current_user, :update)
+      @context.versions.create(
+        {
+          event: 'course_module_remove_item',
+          object: @tag.to_yaml,
+          object_changes: {tag_id: @tag.id}.to_yaml,
+          whodunnit: @current_user&.id
+        }
+      ) rescue nil
       @module = @tag.context_module
       @tag.destroy
       render json: @tag
@@ -735,6 +759,14 @@ class ContextModulesController < ApplicationController
 
       update_module_link_default_tab(@tag)
       @tag.update_asset_name!(@current_user) if params[:content_tag][:title]
+      @context.versions.create(
+        {
+          event: 'course_module_update_item',
+          object: @tag.to_yaml,
+          object_changes: {tag_id: @tag.id}.to_yaml,
+          whodunnit: @current_user&.id
+        }
+      ) rescue nil
       render json: @tag
     end
   end
@@ -777,12 +809,36 @@ class ContextModulesController < ApplicationController
     @module = @context.context_modules.not_deleted.find(params[:id])
     if authorized_action(@module, @current_user, :update)
       if params[:publish]
+        @context.versions.create(
+          {
+            event: 'course_module_publish',
+            object: @module.to_yaml,
+            object_changes: {module_id: @module.id}.to_yaml,
+            whodunnit: @current_user&.id
+          }
+        ) rescue nil
         @module.publish
         @module.publish_items!
       elsif params[:unpublish]
+        @context.versions.create(
+          {
+            event: 'course_module_unpublish',
+            object: @module.to_yaml,
+            object_changes: {module_id: @module.id}.to_yaml,
+            whodunnit: @current_user&.id
+          }
+        ) rescue nil
         @module.unpublish
       end
       if @module.update(context_module_params)
+        @context.versions.create(
+          {
+            event: 'course_module_update',
+            object: @module.to_yaml,
+            object_changes: @module.attributes.to_yaml,
+            whodunnit: @current_user&.id
+          }
+        ) rescue nil
         json = @module.as_json(include: :content_tags, methods: :workflow_state, permissions: { user: @current_user, session: })
         json["context_module"]["relock_warning"] = true if @module.relock_warning?
         render json:
@@ -795,6 +851,14 @@ class ContextModulesController < ApplicationController
   def destroy
     @module = @context.context_modules.not_deleted.find(params[:id])
     if authorized_action(@module, @current_user, :delete)
+      @context.versions.create(
+        {
+          event: 'course_module_destroy',
+          object: @module.to_yaml,
+          object_changes: @module.attributes.to_yaml,
+          whodunnit: @current_user&.id
+        }
+      ) rescue nil
       @module.destroy
       respond_to do |format|
         format.html { redirect_to named_context_url(@context, :context_context_modules_url) }

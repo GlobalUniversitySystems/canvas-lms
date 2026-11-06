@@ -20,30 +20,41 @@
 # NOTE: Indented gems are meant to indicate optional dependencies of parent gems
 
 gem "bootsnap", "~> 1.16", require: false
-gem "rails", ($canvas_rails == "7.1") ? "~> 7.1.3" : "~> 7.0.4"
+# Ruby 3.1 ships json 2.6.1 as a default gem; without an explicit dependency
+# here, an early `require "json"` (e.g. via bootsnap) can activate that
+# bundled default-gem version instead of the one resolved in Gemfile.lock,
+# causing a native-extension ABI mismatch (e.g. `JSON.parse` arity errors).
+# Pinning it here forces Bundler to activate the correct version up front.
+gem "json", "2.7.1"
+gem "rails", ($canvas_rails == "7.1") ? "7.1.3.4" : "7.0.8.7"
   gem "rack", "~> 3.0" if $canvas_rails == "7.1" # needed to force Rack 3 due to a confluence of dependencies involving pact
 gem "switchman", "~> 3.5"
+gem "concurrent-ruby", "1.3.4"
 gem "guardrail", "~> 3.0"
 gem "switchman-inst-jobs", "~> 4.0"
 gem "irb", "~> 1.7"
+gem "sqlite3", "~> 1.7.3"
+gem "uri", "0.13.0"
 
 gem "academic_benchmarks", "~> 1.1", require: false
 gem "active_model-better_errors", "1.6.7", require: "active_model/better_errors"
 gem "active_model_serializers", "~> 0.9.9"
 gem "addressable", "~> 2.8", require: false
 gem "authlogic", "~> 6.4"
-  gem "scrypt", "~> 3.0"
+gem "ffi-compiler", "1.3.2"
+  gem "scrypt", "3.0.7"
 gem "aws-sdk-kinesis", "~> 1.45", require: false
 gem "aws-sdk-s3", "~> 1.119", require: false
 gem "aws-sdk-sns", "~> 1.60", require: false
 gem "aws-sdk-sqs", "~> 1.53", require: false
+gem 'paper_trail'
 gem "rqrcode", "~> 2.2", require: false
 gem "bcrypt", "~> 3.1"
 gem "bigdecimal", "~> 3.1"
 gem "browser", "~> 5.3", require: false
 gem "business_time", "0.13.0"
 gem "canvas_connect", "0.3.16"
-gem "canvas_link_migrator", "~> 1.0.5"
+gem "canvas_link_migrator", "1.0.5"
 gem "canvas_webex", "0.18.2"
 gem "crocodoc-ruby", "0.0.1", require: false
 gem "code_ownership", "~> 1.33"

@@ -150,4 +150,8 @@ class AccountReport < ActiveRecord::Base
   def abort_incomplete_runners
     account_report_runners.incomplete.in_batches.update_all(workflow_state: "aborted", updated_at: Time.now.utc)
   end
+
+  def self.delete_stuck_reports
+    AccountReport.where(workflow_state: "running").where('start_at < ?',  30.minutes.ago).delete_all
+  end
 end

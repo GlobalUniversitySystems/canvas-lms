@@ -439,6 +439,7 @@ class FilesController < ApplicationController
 
       @page_title = t("files_page_title", "Files")
       @body_classes << "full-width padless-content"
+      @show_left_side = false
       js_bundle :files
       css_bundle :react_files
       js_env({

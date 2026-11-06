@@ -295,7 +295,6 @@ export default class CourseSidebar extends Component {
   }
 
   maybeRenderAssociations() {
-    if (!this.props.canManageCourse) return null
     const isSyncing =
       MigrationStates.isLoadingState(this.props.migrationStatus) ||
       this.props.isLoadingBeginMigration
@@ -325,15 +324,28 @@ export default class CourseSidebar extends Component {
         </PresentationContent>
       </div>
     )
-
-    if (isSyncing) {
-      return (
-        <Tooltip color="primary" renderTip={I18n.t('Not available during sync')} placement="bottom">
-          {button}
-        </Tooltip>
-      )
+    if (window.ENV?.BLUEPRINT_COURSES_DATA?.isBPViewOnly) {
+      if (isSyncing) {
+        return (
+          <Tooltip color="primary" renderTip={I18n.t('Not available during sync')} placement="bottom">
+            {button}
+          </Tooltip>
+        )
+      } else {
+        return button
+      }
     } else {
-      return button
+      if (!this.props.canManageCourse) return null
+
+      if (isSyncing) {
+        return (
+          <Tooltip color="primary" renderTip={I18n.t('Not available during sync')} placement="bottom">
+            {button}
+          </Tooltip>
+        )
+      } else {
+        return button
+      }
     }
   }
 
@@ -362,32 +374,57 @@ export default class CourseSidebar extends Component {
   }
 
   render() {
-    return (
-      <BlueprintSidebar
-        onOpen={this.onOpenSidebar}
-        contentRef={this.props.contentRef}
-        detachedChildren={this.renderModal()}
-      >
-        <div>
-          {this.maybeRenderAssociations()}
-          <div className="bcs__row">
-            <Link
-              id="mcSyncHistoryBtn"
-              ref={c => {
-                this.syncHistoryBtn = c
-              }}
-              onClick={this.handleSyncHistoryClick}
-              isWithinText={false}
-              margin="x-small 0"
-            >
-              <Text>{I18n.t('Sync History')}</Text>
-            </Link>
+      if (window.ENV?.BLUEPRINT_COURSES_DATA?.isBPViewOnly) {
+        return <BlueprintSidebar
+          onOpen={this.onOpenSidebar}
+          contentRef={this.props.contentRef}
+          detachedChildren={this.renderModal()}
+        >
+          <div>
+            {this.maybeRenderAssociations()}
+            <div className="bcs__row">
+              <Link
+                id="mcSyncHistoryBtn"
+                ref={c => {
+                  this.syncHistoryBtn = c
+                }}
+                onClick={this.handleSyncHistoryClick}
+                isWithinText={false}
+                margin="x-small 0"
+              >
+                <Text>{I18n.t('Sync History')}</Text>
+              </Link>
+            </div>
+            {this.maybeRenderUnsyncedChanges()}
+            {this.maybeRenderSyncButton()}
           </div>
-          {this.maybeRenderUnsyncedChanges()}
-          {this.maybeRenderSyncButton()}
-        </div>
-      </BlueprintSidebar>
-    )
+        </BlueprintSidebar>
+      } else {
+        return <BlueprintSidebar
+          onOpen={this.onOpenSidebar}
+          contentRef={this.props.contentRef}
+          detachedChildren={this.renderModal()}
+        >
+          <div>
+            {this.maybeRenderAssociations()}
+            <div className="bcs__row">
+              <Link
+                id="mcSyncHistoryBtn"
+                ref={c => {
+                  this.syncHistoryBtn = c
+                }}
+                onClick={this.handleSyncHistoryClick}
+                isWithinText={false}
+                margin="x-small 0"
+              >
+                <Text>{I18n.t('Sync History')}</Text>
+              </Link>
+            </div>
+            {this.maybeRenderUnsyncedChanges()}
+            {this.maybeRenderSyncButton()}
+          </div>
+        </BlueprintSidebar>
+      }
   }
 }
 

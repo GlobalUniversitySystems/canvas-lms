@@ -21,6 +21,7 @@
 module IncomingMailProcessor
   class Instrumentation
     def self.process
+      return true
       unreads = []
 
       mailbox_accounts.each do |a|

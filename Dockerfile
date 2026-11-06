@@ -2,12 +2,12 @@
 # To update this file please edit the relevant template and run the generation
 # task `build/dockerfile_writer.rb --env development --compose-file docker-compose.yml,docker-compose.override.yml --in build/Dockerfile.template --out Dockerfile`
 
-ARG RUBY=3.1
+ARG RUBY_VERSION=3.1
 
-FROM instructure/ruby-passenger:$RUBY
+FROM instructure/ruby-passenger:${RUBY_VERSION}
 LABEL maintainer="Instructure"
 
-ARG RUBY
+ARG RUBY_VERSION
 ARG POSTGRES_CLIENT=14
 ENV APP_HOME /usr/src/app/
 ENV RAILS_ENV development
@@ -22,7 +22,7 @@ ENV CANVAS_RAILS=${CANVAS_RAILS}
 ENV NODE_MAJOR 18
 ENV NODE_OPTIONS=--openssl-legacy-provider
 ENV YARN_VERSION 1.19.1-1
-ENV GEM_HOME /home/docker/.gem/$RUBY
+ENV GEM_HOME=/home/docker/.gem/${RUBY_VERSION}
 ENV PATH ${APP_HOME}bin:$GEM_HOME/bin:$PATH
 ENV BUNDLE_APP_CONFIG /home/docker/.bundle
 
@@ -42,11 +42,11 @@ RUN mkdir -p /etc/apt/keyrings \
   && curl -sS https://dl.yarnpkg.com/debian/pubkey.gpg | apt-key add - \
   && echo "deb https://dl.yarnpkg.com/debian/ stable main" > /etc/apt/sources.list.d/yarn.list \
   && printf 'path-exclude /usr/share/doc/*\npath-exclude /usr/share/man/*' > /etc/dpkg/dpkg.cfg.d/01_nodoc \
-  && echo "deb http://apt.postgresql.org/pub/repos/apt/ $(lsb_release -cs)-pgdg main" > /etc/apt/sources.list.d/pgdg.list \
+  && echo "deb http://apt-archive.postgresql.org/pub/repos/apt/ $(lsb_release -cs)-pgdg main" > /etc/apt/sources.list.d/pgdg.list \
   && curl -sS https://www.postgresql.org/media/keys/ACCC4CF8.asc | apt-key add - \
   && add-apt-repository ppa:git-core/ppa -ny \
-  && apt-get update -qq \
-  && apt-get install -qqy --no-install-recommends \
+  && n=0; until [ $n -ge 3 ]; do apt-get update -qq && break; n=$((n+1)); sleep 5; done \
+  && n=0; until [ $n -ge 3 ]; do apt-get install -qqy --no-install-recommends \
        nodejs \
        yarn="$YARN_VERSION" \
        libxmlsec1-dev \
@@ -61,6 +61,9 @@ RUN mkdir -p /etc/apt/keyrings \
        fontforge \
        git \
        build-essential \
+       libssl-dev \
+       libsodium-dev \
+     && break; n=$((n+1)); sleep 5; done \
   && rm -rf /var/lib/apt/lists/* \
   && mkdir -p /home/docker/.gem/ruby/$RUBY_MAJOR.0
 
@@ -69,6 +72,28 @@ RUN gem install bundler --no-document -v 2.5.6 \
 RUN npm install -g npm@9.8.1 && npm cache clean --force
 
 USER docker
+
+WORKDIR $APP_HOME
+
+COPY Gemfile      ${APP_HOME}
+COPY Gemfile.d    ${APP_HOME}Gemfile.d
+COPY config       ${APP_HOME}config
+COPY --chown=docker:docker gems         ${APP_HOME}gems
+COPY --chown=docker:docker vendor/gems  ${APP_HOME}vendor/gems
+COPY --chown=docker:docker packages     ${APP_HOME}packages
+COPY script       ${APP_HOME}script
+COPY package.json ${APP_HOME}
+COPY yarn.lock    ${APP_HOME}
+
+RUN ruby -v \
+ && which ruby \
+ && ruby -rrbconfig -e 'puts "ruby=#{RbConfig.ruby}"; puts "RUBY_INSTALL_NAME=#{RbConfig::CONFIG["RUBY_INSTALL_NAME"]}"; puts "ruby_version=#{RbConfig::CONFIG["ruby_version"]}"'
+
+RUN n=0; until [ $n -ge 6 ]; do bundle install && break; n=$((n+1)); sleep 15; done
+RUN n=0; until [ $n -ge 3 ]; do yarn install --network-timeout 100000 --pure-lockfile && break; n=$((n+1)); sleep 5; done
+USER root
+
+COPY . $APP_HOME
 
 RUN set -eux; \
   mkdir -p \
@@ -89,4 +114,20 @@ RUN set -eux; \
     tmp \
     /home/docker/.bundle/ \
     /home/docker/.cache/yarn \
-    /home/docker/.gem/
+    /home/docker/.gem/\
+    && find ${APP_HOME} /home/docker ! -user docker -print0 | xargs -0 chown -h docker:docker
+
+USER docker
+# update Gemfile.lock in cases where a lock file was pulled in during the `COPY . $APP_HOME` step
+# RUN bundle lock --update
+# TODO: switch to canvas:compile_assets_dev once we stop using this Dockerfile in production/e2e
+#RUN COMPILE_ASSETS_NPM_INSTALL=0 bundle exec rake canvas:compile_assets
+RUN COMPILE_ASSETS_API_DOCS=0 \
+    COMPILE_ASSETS_BRAND_CONFIGS=0 \
+    COMPILE_ASSETS_NPM_INSTALL=1 \
+    COMPILE_ASSETS_STYLEGUIDE=0 \
+    bundle exec rails canvas:compile_assets
+
+RUN RAILS_ENV=production bundle exec rake js:webpack_production
+
+RUN chown docker:docker * -R

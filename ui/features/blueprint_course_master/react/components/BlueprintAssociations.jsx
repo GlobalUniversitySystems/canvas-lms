@@ -70,8 +70,10 @@ export default class BlueprintAssociations extends React.Component {
   }
 
   componentDidMount() {
-    if (!this.props.hasLoadedCourses) {
-      this.props.loadCourses()
+    if (!window.ENV?.BLUEPRINT_COURSES_DATA?.isBPViewOnly) {
+      if (!this.props.hasLoadedCourses) {
+        this.props.loadCourses()
+      }
     }
   }
 
@@ -133,44 +135,64 @@ export default class BlueprintAssociations extends React.Component {
   }
 
   render() {
-    return (
-      <div className="bca__wrapper">
-        {this.maybeRenderSyncWarning()}
-        {this.renderLoadingOverlay()}
-        <Heading level="h3">{I18n.t('Search Courses')}</Heading>
-        <br />
-        <div className="bca-course-associations">
-          <CoursePicker
-            ref={c => {
-              this.coursePicker = c
-            }}
-            courses={this.props.courses}
-            terms={this.props.terms}
-            subAccounts={this.props.subAccounts}
-            loadCourses={debounce(this.props.loadCourses, 200)}
-            isLoadingCourses={this.props.isLoadingCourses}
-            selectedCourses={this.props.addedAssociations.map(course => course.id)}
-            onSelectedChanged={this.onSelectedChanged}
-            isExpanded={this.props.isExpanded}
-            detailsRef={this.focusManager.registerBeforeRef}
-          />
-          <PresentationContent>
-            <hr />
-          </PresentationContent>
-          <Heading level="h3">{I18n.t('Associated')}</Heading>
-          <AssociationsTable
-            existingAssociations={this.props.existingAssociations}
-            addedAssociations={this.props.addedAssociations}
-            removedAssociations={this.props.removedAssociations}
-            onRemoveAssociations={this.props.removeAssociations}
-            onRestoreAssociations={this.props.addAssociations}
-            isLoadingAssociations={this.props.isLoadingAssociations}
-            handleFocusLoss={this.catchAssociationsFocus}
-            focusManager={this.focusManager}
-          />
+    if (window.ENV?.BLUEPRINT_COURSES_DATA?.isBPViewOnly) {
+      return (
+        <div className="bca__wrapper">
+          <div className="bca-course-associations">
+            <Heading level="h3">{I18n.t('Associated')}</Heading>
+            <AssociationsTable
+              existingAssociations={this.props.existingAssociations}
+              addedAssociations={this.props.addedAssociations}
+              removedAssociations={this.props.removedAssociations}
+              onRemoveAssociations={this.props.removeAssociations}
+              onRestoreAssociations={this.props.addAssociations}
+              isLoadingAssociations={this.props.isLoadingAssociations}
+              handleFocusLoss={this.catchAssociationsFocus}
+              focusManager={this.focusManager}
+            />
+          </div>
         </div>
-      </div>
-    )
+      )
+    } else {
+      return (
+        <div className="bca__wrapper">
+          {this.maybeRenderSyncWarning()}
+          {this.renderLoadingOverlay()}
+          <Heading level="h3">{I18n.t('Search Courses')}</Heading>
+          <br />
+          <div className="bca-course-associations">
+            <CoursePicker
+              ref={c => {
+                this.coursePicker = c
+              }}
+              courses={this.props.courses}
+              terms={this.props.terms}
+              subAccounts={this.props.subAccounts}
+              loadCourses={debounce(this.props.loadCourses, 200)}
+              isLoadingCourses={this.props.isLoadingCourses}
+              selectedCourses={this.props.addedAssociations.map(course => course.id)}
+              onSelectedChanged={this.onSelectedChanged}
+              isExpanded={this.props.isExpanded}
+              detailsRef={this.focusManager.registerBeforeRef}
+            />
+            <PresentationContent>
+              <hr />
+            </PresentationContent>
+            <Heading level="h3">{I18n.t('Associated')}</Heading>
+            <AssociationsTable
+              existingAssociations={this.props.existingAssociations}
+              addedAssociations={this.props.addedAssociations}
+              removedAssociations={this.props.removedAssociations}
+              onRemoveAssociations={this.props.removeAssociations}
+              onRestoreAssociations={this.props.addAssociations}
+              isLoadingAssociations={this.props.isLoadingAssociations}
+              handleFocusLoss={this.catchAssociationsFocus}
+              focusManager={this.focusManager}
+            />
+          </div>
+        </div>
+      )
+    }
   }
 }
 

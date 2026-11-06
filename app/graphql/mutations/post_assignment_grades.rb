@@ -79,6 +79,10 @@ class Mutations::PostAssignmentGrades < Mutations::BaseMutation
         posting_params:,
         skip_content_participation_refresh: false
       )
+      if assignment.feedback_release_date.present?
+        assignment.feedback_release_date = 1.day.ago
+        assignment.save
+      end
       { assignment:, progress:, sections: }
     else
       raise GraphQL::ExecutionError, "Error posting assignment grades"

@@ -260,9 +260,9 @@ module AdheresToPolicy
       config = AdheresToPolicy.configuration
       blacklist = config.blacklist
 
-      use_rails_cache = config.cache_permissions &&
-                        !blacklist.include?(sought_right_cookie) &&
-                        (Thread.current[:primary_permission_under_evaluation] || config.cache_intermediate_permissions)
+      use_rails_cache = false # config.cache_permissions &&
+      #                   !blacklist.include?(sought_right_cookie) &&
+      #                   (Thread.current[:primary_permission_under_evaluation] || config.cache_intermediate_permissions)
 
       was_primary_permission, Thread.current[:primary_permission_under_evaluation] =
         Thread.current[:primary_permission_under_evaluation], false

@@ -159,6 +159,7 @@ module Api::V1::Assignment
     hash["has_submitted_submissions"] = assignment.has_submitted_submissions?
     hash["due_date_required"] = assignment.due_date_required?
     hash["max_name_length"] = assignment.max_name_length
+    hash["teacher_access_lock_at"] = assignment&.teacher_access_lock_at
     hash["allowed_attempts"] = -1 if assignment.allowed_attempts.nil?
     paced_course = assignment.course.account.feature_enabled?(:course_paces) && Course.find_by(id: assignment.context_id)&.enable_course_paces?
     hash["in_paced_course"] = paced_course if paced_course
@@ -525,6 +526,7 @@ module Api::V1::Assignment
     peer_reviews
     anonymous_peer_reviews
     peer_reviews_assign_at
+    teacher_access_lock_at
     peer_review_count
     automatic_peer_reviews
     intra_group_peer_reviews

@@ -77,6 +77,7 @@ class AssignmentsController < ApplicationController
           HAS_ASSIGNMENTS: @context.active_assignments.count > 0,
           QUIZ_LTI_ENABLED: quiz_lti_tool_enabled?,
           DUE_DATE_REQUIRED_FOR_ACCOUNT: due_date_required_for_account,
+          RESTRICT_GROUP_MANAGEMENT: !@current_user&.email&.downcase&.in?(ENV['ASSIGNMENTS_WHITELISTED_EMAILS']&.split(',')&.map { |mail| mail.gsub(' ','') }&.map { |mail| mail.downcase }),
           MODERATED_GRADING_GRADER_LIMIT: Course::MODERATED_GRADING_GRADER_LIMIT,
           SHOW_SPEED_GRADER_LINK: @current_user.present? && context.allows_speed_grader? && context.grants_any_right?(@current_user, :manage_grades, :view_all_grades),
           FLAGS: {
@@ -273,7 +274,22 @@ class AssignmentsController < ApplicationController
         @assignment.ensure_assignment_group
 
         @locked = @assignment.locked_for?(@current_user, check_policies: true, deep_check_if_needed: true)
-        @unlocked = !@locked || @assignment.grants_right?(@current_user, session, :update)
+        @locked_for_teacher = @current_user.teacher_enrollments.exists?(course: @assignment.course) && @assignment.teacher_access_lock_at.present? && Time.current >= @assignment.teacher_access_lock_at
+        @unlocked = !@locked || @assignment.grants_right?(@current_user, session, :update) || !@locked_for_teacher
+
+        if @locked_for_teacher
+          render 'assignments/teacher_locked' and return
+        end
+
+        # ErrorReport.create(
+        #   category: 'Debug',
+        #   message: "show_locked_page",
+        #   backtrace: {
+        #     locked: @locked,
+        #     enroll: @current_user.teacher_enrollments.exists?(course: @assignment.course),
+        #     compar: Time.current >= @assignment.teacher_access_lock_at
+        #   }
+        # )
 
         if @assignment.submission_types == "external_tool" && Account.site_admin.feature_enabled?(:external_tools_for_a2) && @unlocked
           @tool = ContextExternalTool.from_assignment(@assignment)
@@ -454,7 +470,8 @@ class AssignmentsController < ApplicationController
 
         @mark_done = MarkDonePresenter.new(self, @context, params["module_item_id"], @current_user, @assignment)
 
-        @show_locked_page = @locked && !@locked[:can_view]
+        @show_locked_page = (@locked && !@locked[:can_view]) || @locked_for_teacher
+
         if @show_locked_page
           js_bundle :module_sequence_footer
         else
@@ -827,6 +844,7 @@ class AssignmentsController < ApplicationController
           Account.site_admin.feature_enabled?(:hide_zero_point_quizzes_option),
         GRADING_SCHEME_UPDATES_ENABLED:
           Account.site_admin.feature_enabled?(:grading_scheme_updates),
+        CURRENT_USER_CAN_LOCK_ASSIGNMENT: @current_user&.roles(Account.find(1))&.include?('admin'),
         OUTCOMES_NEW_DECAYING_AVERAGE_CALCULATION:
           @context.root_account.feature_enabled?(:outcomes_new_decaying_average_calculation)
       }
@@ -1058,6 +1076,7 @@ class AssignmentsController < ApplicationController
                   :anonymous_peer_reviews,
                   :peer_reviews_due_at,
                   :peer_reviews_assign_at,
+                  :teacher_access_lock_at,
                   :grading_standard_id,
                   :peer_reviews,
                   :automatic_peer_reviews,

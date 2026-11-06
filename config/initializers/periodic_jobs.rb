@@ -183,11 +183,11 @@ Rails.configuration.after_initialize do
 
   unless ApplicationController.test_cluster?
     Delayed::Periodic.cron "Attachment::GarbageCollector::ContentExportAndMigrationContextType.delete_content", "37 1 * * *" do
-      with_each_shard_by_database(Attachment::GarbageCollector::ContentExportAndMigrationContextType, :delete_content, jitter: 30.minutes, local_offset: true)
+      with_each_shard_by_database(Attachments::GarbageCollector::ContentExportAndMigrationContextType, :delete_content, jitter: 30.minutes, local_offset: true)
     end
 
     Delayed::Periodic.cron "Attachment::GarbageCollector::ContentExportContextType.delete_content", "37 3 * * *" do
-      with_each_shard_by_database(Attachment::GarbageCollector::ContentExportContextType, :delete_content, jitter: 30.minutes, local_offset: true)
+      with_each_shard_by_database(Attachments::GarbageCollector::ContentExportContextType, :delete_content, jitter: 30.minutes, local_offset: true)
     end
   end
 
@@ -289,6 +289,10 @@ Rails.configuration.after_initialize do
     with_each_shard_by_database(AccountReport, :delete_old_rows_and_runners)
   end
 
+  Delayed::Periodic.cron "AccountReport.delete_stuck_reports", "*/30 * * * *", priority: Delayed::LOW_PRIORITY do
+    with_each_shard_by_database(AccountReport, :delete_stuck_reports)
+  end
+
   Delayed::Periodic.cron "SisBatchRollBackData.cleanup_expired_data", "*/15 * * * *", priority: Delayed::LOW_PRIORITY do
     with_each_shard_by_database(SisBatchRollBackData, :cleanup_expired_data)
   end
@@ -299,6 +303,10 @@ Rails.configuration.after_initialize do
 
   Delayed::Periodic.cron "MissingPolicyApplicator.apply_missing_deductions", "*/5 * * * *", priority: Delayed::LOW_PRIORITY do
     with_each_shard_by_database(MissingPolicyApplicator, :apply_missing_deductions)
+  end
+
+  Delayed::Periodic.cron "MissingSubmissionsGrader.process_missing_submissions", "*/5 * * * *", priority: Delayed::LOW_PRIORITY do
+    with_each_shard_by_database(MissingSubmissionsGrader, :process_missing_submissions)
   end
 
   Delayed::Periodic.cron "Assignment.clean_up_duplicating_assignments", "*/5 * * * *", priority: Delayed::LOW_PRIORITY do

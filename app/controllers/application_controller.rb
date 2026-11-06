@@ -59,6 +59,12 @@ class ApplicationController < ActionController::Base
   end
 
   prepend_before_action :load_user, :load_account
+
+  before_action :set_paper_trail_whodunnit
+  def user_for_paper_trail
+    @current_user.id rescue "Unknown user id"
+  end
+
   # make sure authlogic is before load_user
   skip_before_action :activate_authlogic
   prepend_before_action :activate_authlogic
@@ -578,8 +584,10 @@ class ApplicationController < ActionController::Base
   helper_method :set_master_course_js_env_data
 
   def load_blueprint_courses_ui
+    js_env[:tst_bp_view_only] = @context.is_a?(Course) && @context.grants_right?(@current_user, :bp_view_only)
+    js_env[:tst_manage_master_courses] = @context.is_a?(Course) && @context.grants_right?(@current_user, :manage_master_courses)
     return if js_env[:BLUEPRINT_COURSES_DATA]
-    return unless @context.is_a?(Course) && @context.grants_right?(@current_user, :manage)
+    return unless (@context.is_a?(Course) && @context.grants_right?(@current_user, :manage)) || (@context.is_a?(Course) && @context.grants_right?(@current_user, :manage_master_courses) || (@context.is_a?(Course) && @context.grants_right?(@current_user, :bp_view_only)))
 
     is_child = MasterCourses::ChildSubscription.is_child_course?(@context)
     is_master = MasterCourses::MasterTemplate.is_master_course?(@context)
@@ -595,7 +603,9 @@ class ApplicationController < ActionController::Base
       Rails.cache.delete(MasterCourses::ChildSubscription.course_cache_key(@context))
       return
     end
+    bp_view_only = @context.is_a?(Course) && @context.grants_right?(@current_user, :bp_view_only)
     bc_data = {
+      isBPViewOnly: bp_view_only,
       isMasterCourse: is_master,
       isChildCourse: is_child,
       accountId: @context.account.id,
@@ -1212,7 +1222,7 @@ class ApplicationController < ActionController::Base
 
           if @context.respond_to?(:short_name)
             crumb_url = named_context_url(@context, :context_url) if @context.grants_right?(@current_user, session, :read)
-            add_crumb(@context.nickname_for(@current_user, :short_name), crumb_url)
+            add_crumb(@context.nickname_for(@current_user, :short_name), crumb_url, title: @context.nickname_for(@current_user, :short_name))
           end
 
           @set_badge_counts = true
@@ -1599,7 +1609,7 @@ class ApplicationController < ActionController::Base
     # We only record page_views for html page requests coming from within the
     # app, or if coming from a developer api request and specified as a
     # page_view.
-    return unless @current_user && !request.xhr? && request.get? && page_views_enabled?
+    return unless @current_user && !request.xhr? && request.get? && !api_request? && page_views_enabled?
 
     ENV["RAILS_HOST_WITH_PORT"] ||= request.host_with_port rescue nil
     generate_page_view
@@ -2921,13 +2931,14 @@ class ApplicationController < ActionController::Base
     end
 
     current_user_has_been_observer_in_this_course = @context.user_has_been_observer?(@current_user)
+    current_user_has_been_instructor_in_this_course = @context.user_has_been_instructor?(@current_user)
 
     prefetch_xhr(api_v1_course_assignment_groups_url(
                    @context,
                    include: [
                      "assignments",
                      "discussion_topic",
-                     (permissions[:manage] || current_user_has_been_observer_in_this_course) && "all_dates",
+                     (permissions[:manage] || current_user_has_been_instructor_in_this_course) && "all_dates",
                      permissions[:manage] && "module_ids",
                      peer_reviews_for_a2_enabled? && "assessment_requests"
                    ].compact_blank,

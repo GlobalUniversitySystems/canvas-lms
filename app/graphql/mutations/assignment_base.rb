@@ -235,7 +235,7 @@ class Mutations::AssignmentBase < Mutations::BaseMutation
   def prepare_dates!(input)
     # graphql gives us back proper date objects but `update_assignment`
     # wants strings
-    %i[due_at lock_at unlock_at peer_reviews_assign_at].each do |date_field|
+    %i[due_at lock_at unlock_at peer_reviews_assign_at teacher_access_lock_at].each do |date_field|
       if input[date_field]
         input[date_field] = input[date_field].iso8601
       end

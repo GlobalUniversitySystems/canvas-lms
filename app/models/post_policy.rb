@@ -21,10 +21,13 @@ class PostPolicy < ActiveRecord::Base
   belongs_to :course, optional: false, inverse_of: :post_policies
   belongs_to :assignment, optional: true, touch: true, inverse_of: :post_policy, class_name: "AbstractAssignment"
 
+  has_paper_trail versions: { class_name: "PaperTrail::CourseVersion" }
+
   validates :post_manually, inclusion: [true, false]
 
   before_validation :set_course_from_assignment
   before_save :set_root_account_id
+  # after_create :set_post_manually
 
   after_update :update_owning_course, if: -> { assignment.blank? }
 
@@ -44,6 +47,13 @@ class PostPolicy < ActiveRecord::Base
 
   def set_root_account_id
     self.root_account_id ||= course.root_account_id
+  end
+
+  def set_post_manually
+    return if assignment_id.present?
+
+    self.post_manually = true
+    save
   end
 
   def update_owning_course

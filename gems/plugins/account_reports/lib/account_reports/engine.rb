@@ -385,6 +385,28 @@ module AccountReports
             parameters_partial: false,
             description_partial: true,
             parameters: {}
+          },
+          "assignment_export_csv" => {
+            title: proc { I18n.t("Assignment Export") },
+            description_partial: true,
+            parameters_partial: "term_selector_parameters",
+            parameters: {
+              enrollment_term_id: {
+                required: false,
+                description: "The canvas id of the term to filter courses by"
+              }
+            }
+          },
+          "user_asset_access_csv" => {
+            title: proc { I18n.t("User Asset Access Report") },
+            description_partial: true,
+            parameters_partial: "user_asset_access_csv_parameters",
+            parameters: {
+              user_id: {
+                required: true,
+                description: "The canvas id of the user to get asset access data for"
+              }
+            }
           }
         }
       end

@@ -31,6 +31,8 @@ class Enrollment < ActiveRecord::Base
 
   include Workflow
 
+  has_paper_trail versions: { class_name: "PaperTrail::EnrollmentVersion" }
+
   belongs_to :course, inverse_of: :enrollments
   belongs_to :course_section, inverse_of: :enrollments
   belongs_to :root_account, class_name: "Account", inverse_of: :enrollments
@@ -1548,6 +1550,10 @@ class Enrollment < ActiveRecord::Base
     elsif course.conclude_at
       course.conclude_at < Time.zone.now
     end
+  end
+
+  def sis_end_at_in_past?
+    course.sis_end_at.present? && course.sis_end_at < Time.zone.now
   end
 
   def student_or_fake_student?

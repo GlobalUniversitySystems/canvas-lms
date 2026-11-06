@@ -1220,6 +1220,14 @@ class DiscussionTopicsController < ApplicationController
       return render_unauthorized_action if editing_restricted?(@topic)
 
       @topic.destroy
+      @context.versions.create(
+        {
+          event: "course_#{@topic.is_announcement ? 'announcement' : 'discussion_topic'}_delete",
+          object: @topic.to_yaml,
+          object_changes: {topic_id: @topic.id}.to_yaml,
+          whodunnit: @current_user&.id
+        }
+      ) rescue nil
       respond_to do |format|
         format.html do
           flash[:notice] = t :topic_deleted_notice, "%{topic_title} deleted successfully", topic_title: @topic.title
@@ -1568,6 +1576,14 @@ class DiscussionTopicsController < ApplicationController
         end
 
         if @context.is_a?(Course)
+          @context.versions.create(
+            {
+              event: "course_#{model_type}_#{is_new ? 'created' : 'updated'}",
+              object: @topic.to_yaml,
+              object_changes: @topic.attributes.to_yaml,
+              whodunnit: @current_user&.id
+            }
+          ) rescue nil
           render json: discussion_topic_api_json(@topic,
                                                  @context,
                                                  @current_user,

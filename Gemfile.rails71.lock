@@ -1,6 +1,6 @@
 GIT
-  remote: https://github.com/instructure/rspecq.git
-  revision: d7fa5536da01cccb5109ba05c9e236d6660da593
+  remote: https://github.com/kavalenka/rspecq.git
+  revision: c392e5eb1fafdb8f275ad28aa50db7951911d483
   specs:
     rspecq (0.7.1)
       redis (>= 4.0, < 6.0)

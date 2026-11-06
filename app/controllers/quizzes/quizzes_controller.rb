@@ -440,6 +440,16 @@ class Quizzes::QuizzesController < ApplicationController
 
       @quiz.did_edit if @quiz.created?
       @quiz.reload
+
+      @context.versions.create(
+        {
+          event: 'quiz_create',
+          object: @quiz.to_yaml,
+          object_changes: @quiz.attributes.to_yaml,
+          whodunnit: @current_user&.id
+        }
+      ) rescue nil
+
       render json: @quiz.as_json(include: { assignment: { include: :assignment_group } })
     end
   rescue
@@ -558,6 +568,15 @@ class Quizzes::QuizzesController < ApplicationController
           SubmissionLifecycleManager.recompute(@quiz.assignment, update_grades: true, executing_user: @current_user)
         end
 
+        @context.versions.create(
+          {
+            event: 'quiz_update',
+            object: @quiz.to_yaml,
+            object_changes: @quiz.attributes.to_yaml,
+            whodunnit: @current_user&.id
+          }
+        ) rescue nil
+
         flash[:notice] = t("Quiz successfully updated")
         format.html { redirect_to named_context_url(@context, :context_quiz_url, @quiz) }
         format.json { render json: @quiz.as_json(include: { assignment: { include: :assignment_group } }) }
@@ -576,6 +595,15 @@ class Quizzes::QuizzesController < ApplicationController
       return render_unauthorized_action if editing_restricted?(@quiz)
 
       respond_to do |format|
+        @context.versions.create(
+          {
+            event: 'quiz_destroy',
+            object: @quiz.to_yaml,
+            object_changes: @quiz.attributes.to_yaml,
+            whodunnit: @current_user&.id
+          }
+        ) rescue nil
+
         if @quiz.destroy
           format.html { redirect_to course_quizzes_url(@context) }
           format.json { render json: @quiz }
@@ -591,6 +619,15 @@ class Quizzes::QuizzesController < ApplicationController
     if authorized_action(@context, @current_user, [:manage_assignments, :manage_assignments_edit])
       @quizzes = @context.quizzes.active.where(id: params[:quizzes])
       @quizzes.each(&:publish!)
+
+      @context.versions.create(
+        {
+          event: 'quiz_publish',
+          object: {}.to_yaml,
+          object_changes: {quiz_ids: @quizzes.map(&:id)}.to_yaml,
+          whodunnit: @current_user&.id
+        }
+      ) rescue nil
 
       flash[:notice] = t("notices.quizzes_published",
                          { one: "1 quiz successfully published!",
@@ -613,6 +650,15 @@ class Quizzes::QuizzesController < ApplicationController
                          { one: "1 quiz successfully unpublished!",
                            other: "%{count} quizzes successfully unpublished!" },
                          count: @quizzes.length)
+
+      @context.versions.create(
+        {
+          event: 'quiz_unpublish',
+          object: {}.to_yaml,
+          object_changes: {quiz_ids: @quizzes.map(&:id)}.to_yaml,
+          whodunnit: @current_user&.id
+        }
+      ) rescue nil
 
       respond_to do |format|
         format.html { redirect_to named_context_url(@context, :context_quizzes_url) }

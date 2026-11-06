@@ -23,7 +23,7 @@ class DeveloperKeyAccountBindingSerializer
     @context = context
   end
 
-  def as_json
+  def as_json(_options = {})
     {
       id: @binding.global_id,
       account_id: @binding.account.global_id,

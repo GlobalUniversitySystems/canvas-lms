@@ -394,10 +394,7 @@ export default AssignmentListItemView = (function () {
       data.showAvailability =
         !(this.model.inPacedCourse() && this.canManage()) &&
         (this.model.multipleDueDates() || !this.model.defaultDates().available())
-      data.showDueDate =
-        !(this.model.inPacedCourse() && this.canManage()) &&
-        (this.model.multipleDueDates() || this.model.singleSectionDueDate())
-
+      data.showDueDate = (this.model.multipleDueDates() || this.model.singleSectionDueDate())
       data.cyoe = CyoeHelper.getItemData(
         data.id,
         this.isGraded() && (!this.model.isQuiz() || data.is_quiz_assignment)
@@ -822,6 +819,11 @@ export default AssignmentListItemView = (function () {
       if (json.gradingType === 'not_graded') {
         json.hideGrade = true
       }
+
+      if (json.externalToolCustomParams && json.externalToolCustomParams.default_feedbackreleasedate && (new Date(json.externalToolCustomParams.default_feedbackreleasedate) > new Date())) {
+        json.hideGrade = true
+      }
+
       return json
     }
 

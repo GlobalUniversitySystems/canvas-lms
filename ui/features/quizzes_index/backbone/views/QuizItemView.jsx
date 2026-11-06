@@ -412,9 +412,7 @@ export default class ItemView extends Backbone.View {
     base.showAvailability =
       !(this.model.get('in_paced_course') && this.canManage()) &&
       (this.model.multipleDueDates() || !this.model.defaultDates().available())
-    base.showDueDate =
-      !(this.model.get('in_paced_course') && this.canManage()) &&
-      (this.model.multipleDueDates() || this.model.singleSectionDueDate())
+    base.showDueDate = (this.model.multipleDueDates() || this.model.singleSectionDueDate())
     base.name = this.model.name()
     base.isQuizzesNext = this.model.isQuizzesNext()
     base.useQuizzesNextIcon = this.model.isQuizzesNext() || this.isStudent()

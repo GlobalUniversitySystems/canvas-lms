@@ -262,24 +262,26 @@ export default class IndexMenu extends React.Component<Props, State> {
                 </a>
               </li>
             )}
-            <li role="menuitem">
-              {/* TODO: use InstUI button */}
-              {/* eslint-disable-next-line jsx-a11y/anchor-is-valid */}
-              <a
-                ref={ref => {
-                  this.triggerRef = ref
-                }}
-                href="#"
-                id="assignmentSettingsCog"
-                role="button"
-                title={I18n.t('Assignment Groups Weight')}
-                data-focus-returns-to="course_assignment_settings_link"
-                aria-label={I18n.t('Assignment Groups Weight')}
-              >
-                {this.renderWeightIcon()}
-                {I18n.t('Assignment Groups Weight')}
-              </a>
-            </li>
+            {!window.ENV?.RESTRICT_GROUP_MANAGEMENT && (
+              <li role="menuitem">
+                {/* TODO: use InstUI button */}
+                {/* eslint-disable-next-line jsx-a11y/anchor-is-valid */}
+                <a
+                  ref={ref => {
+                    this.triggerRef = ref
+                  }}
+                  href="#"
+                  id="assignmentSettingsCog"
+                  role="button"
+                  title={I18n.t('Assignment Groups Weight')}
+                  data-focus-returns-to="course_assignment_settings_link"
+                  aria-label={I18n.t('Assignment Groups Weight')}
+                >
+                  {this.renderWeightIcon()}
+                  {I18n.t('Assignment Groups Weight')}
+                </a>
+              </li>
+            )}
             {this.renderDisablePostToSis()}
             {this.renderTools()}
             {this.renderTrayTools()}

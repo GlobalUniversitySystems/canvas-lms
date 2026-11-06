@@ -279,7 +279,7 @@ class MasterCourses::MasterTemplatesController < ApplicationController
   def associated_courses
     scope = @template.child_course_scope.order(:id).preload(:enrollment_term, :teachers)
     courses = Api.paginate(scope, self, api_v1_course_blueprint_associated_courses_url)
-    can_read_sis = @course.account.grants_any_right?(@current_user, :read_sis, :manage_sis)
+    can_read_sis = @course.account.grants_any_right?(@current_user, :read_sis, :manage_sis, :manage_master_courses)
 
     preload_teachers(courses)
     json = courses.map do |course|
@@ -311,7 +311,7 @@ class MasterCourses::MasterTemplatesController < ApplicationController
   #     -d 'course_ids_to_remove[]=2' \
   #
   def update_associations
-    if authorized_action(@course.account, @current_user, [:manage_courses, :manage_courses_admin])
+    if authorized_action(@course.account, @current_user, [:manage_courses, :manage_courses_admin, :manage_master_courses])
       # NOTE: that I'm additionally requiring course management rights on the account
       # since (for now) we're only allowed to associate courses derived from it
       ids_to_add = api_find_all(Course, Array(params[:course_ids_to_add])).pluck(:id)
@@ -340,10 +340,28 @@ class MasterCourses::MasterTemplatesController < ApplicationController
         end
 
         valid_ids_to_add -= template_pairs.map(&:last) # ignore existing active subscriptions
+
+        @course.versions.create(
+          {
+            event: 'update_associations_add',
+            object: @course.to_yaml,
+            object_changes: {ids_to_add: ids_to_add}.to_yaml,
+            whodunnit: @current_user&.id
+          }
+        ) rescue nil
+
         valid_ids_to_add.each { |course_id| @template.add_child_course!(course_id) }
       end
 
       if ids_to_remove.any?
+        @course.versions.create(
+          {
+            event: 'update_associations_remove',
+            object: @course.to_yaml,
+            object_changes: {ids_to_remove: ids_to_remove}.to_yaml,
+            whodunnit: @current_user&.id
+          }
+        ) rescue nil
         @template.child_subscriptions.active.where(child_course_id: ids_to_remove).preload(:child_course).each(&:destroy)
       end
 
@@ -390,7 +408,12 @@ class MasterCourses::MasterTemplatesController < ApplicationController
     end
 
     migration = MasterCourses::MasterMigration.start_new_migration!(@template, @current_user, options)
-    render json: master_migration_json(migration, @current_user, session)
+
+    if ActiveModel::Type::Boolean.new.cast(ENV['DISABLE_BP_SYNC'])
+      render json: {message: "Blueprint sync is disabled!"}, status: :bad_request
+    else
+      render json: master_migration_json(migration, @current_user, session)
+    end
   end
 
   # @API Set or remove restrictions on a blueprint course object
@@ -682,7 +705,7 @@ class MasterCourses::MasterTemplatesController < ApplicationController
   end
 
   def require_course_level_manage_rights
-    !!authorized_action(@course, @current_user, :manage)
+    !!authorized_action(@course, @current_user, %i[manage manage_master_courses])
   end
 
   def get_course

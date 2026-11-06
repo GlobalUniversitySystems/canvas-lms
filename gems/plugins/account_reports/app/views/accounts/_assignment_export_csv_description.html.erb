@@ -1,0 +1,53 @@
+<p><%= t('account_reports.assignment_export.description.text',
+         %{This report exports all assignments across all active courses in the account.
+           Each row represents a single assignment and includes details such as the course,
+           assignment group, dates, and whether the assignment uses an external tool.}) %></p>
+
+<h3><%= t('#account_reports.default.description.header', %{Example}) %></h3>
+
+<table class="report_example">
+  <thead>
+  <tr>
+    <th><%= t('Course ID') %></th>
+    <th><%= t('Course Name') %></th>
+    <th><%= t('Assignment Group ID') %></th>
+    <th><%= t('Assignment Group Name') %></th>
+    <th><%= t('Assignment Group Weightage') %></th>
+    <th><%= t('Assignment ID') %></th>
+    <th><%= t('Assignment Name') %></th>
+    <th><%= t('Assignment Created Date') %></th>
+    <th><%= t('Assignment Start Date') %></th>
+    <th><%= t('Assignment Due Date') %></th>
+    <th><%= t('External Tool Link') %></th>
+  </tr>
+  </thead>
+  <tbody>
+  <tr>
+    <td>1</td>
+    <td>Introduction to Biology</td>
+    <td>10</td>
+    <td>Homework</td>
+    <td>25</td>
+    <td>101</td>
+    <td>Week 1 Assignment</td>
+    <td>2024-01-10T09:00:00-07:00</td>
+    <td>2024-01-12T00:00:00-07:00</td>
+    <td>2024-01-19T23:59:00-07:00</td>
+    <td>false</td>
+  </tr>
+  <tr>
+    <td>1</td>
+    <td>Introduction to Biology</td>
+    <td>11</td>
+    <td>Quizzes</td>
+    <td>12</td>
+    <td>102</td>
+    <td>Midterm Quiz</td>
+    <td>2024-01-15T09:00:00-07:00</td>
+    <td></td>
+    <td>2024-03-01T23:59:00-07:00</td>
+    <td>true</td>
+  </tr>
+  </tbody>
+</table>
+

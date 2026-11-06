@@ -72,6 +72,8 @@ class User < ActiveRecord::Base
   include UserLearningObjectScopes
   include PermissionsHelper
 
+  has_paper_trail versions: { class_name: "PaperTrail::UserVersion" }
+
   attr_accessor :previous_id, :gradebook_importer_submissions, :prior_enrollment, :override_lti_id_lock
 
   before_save :infer_defaults
@@ -2093,7 +2095,7 @@ class User < ActiveRecord::Base
       end
 
       if association == :current_and_invited_courses
-        if enrollment_uuid && (pending_course = Course.active
+        if enrollment_uuid && (pending_course = Course.active.sis_end_at_in_future
           .select("courses.*, enrollments.type AS primary_enrollment,
                   #{Enrollment.type_rank_sql} AS primary_enrollment_rank,
                   enrollments.workflow_state AS primary_enrollment_state,

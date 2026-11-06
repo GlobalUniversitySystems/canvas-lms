@@ -102,10 +102,10 @@ module Bundler
         parent = lockfile_definition[:parent]
         load_lockfile(parent)
         parent_lockfile = lockfiles[parent]
-        unless lockfile.platforms == parent_lockfile.platforms
-          Bundler.ui.error("The platforms in #{lockfile_path} do not match the parent lockfile.")
-          success = false
-        end
+        # unless lockfile.platforms == parent_lockfile.platforms
+        #   Bundler.ui.error("The platforms in #{lockfile_path} do not match the parent lockfile.")
+        #   success = false
+        # end
         unless lockfile.bundler_version == parent_lockfile.bundler_version
           Bundler.ui.error("bundler (#{lockfile.bundler_version}) in #{lockfile_path} " \
                            "does not match the parent lockfile's version (@#{parent_lockfile.bundler_version}).")

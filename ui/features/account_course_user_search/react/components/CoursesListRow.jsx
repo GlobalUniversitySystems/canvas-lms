@@ -38,6 +38,9 @@ import $ from '@canvas/rails-flash-notifications'
 import {useScope as useI18nScope} from '@canvas/i18n'
 import UserLink from './UserLink'
 import AddPeopleApp from '@canvas/add-people'
+import {Checkbox} from '@instructure/ui-checkbox'
+import FriendlyDatetime from "@canvas/datetime/react/components/FriendlyDatetime";
+import moment from 'moment-timezone';
 
 const I18n = useI18nScope('account_course_user_search')
 
@@ -58,14 +61,17 @@ export default class CoursesListRow extends React.Component {
     teacher_count: number,
     sis_course_id: string,
     subaccount_name: string.isRequired,
+    sis_identifier: string,
     subaccount_id: string.isRequired,
     term: shape({name: string.isRequired}).isRequired,
     roles: arrayOf(shape({id: string.isRequired})),
+    selectedCourse: arrayOf(string),
     showSISIds: bool,
     can_create_enrollments: bool,
     blueprint: bool,
     template: bool,
     concluded: bool,
+    selectSyncActive: bool,
   }
 
   static defaultProps = {
@@ -190,12 +196,17 @@ export default class CoursesListRow extends React.Component {
       total_students,
       teachers,
       teacher_count,
+      sis_identifier,
       subaccount_name,
       subaccount_id,
       showSISIds,
       term,
       blueprint,
       template,
+      selectSyncActive,
+      selectedCourse,
+      onChangeCheckbox,
+      last_sync_to_sis_triggered_at
     } = this.props
     const {teachersToShow, newlyEnrolledStudents} = this.state
     const url = `/courses/${id}`
@@ -207,8 +218,29 @@ export default class CoursesListRow extends React.Component {
     const settingsTip = I18n.t('Settings for %{name}', {name})
     const templateTip = I18n.t('This is a course template')
 
+    const onChangeHandler = () => {
+      onChangeCheckbox({
+        type: 'select',
+        courseId: id,
+      })
+    }
+
+    const isCheckboxSelected = selectedCourse.includes(id)
+
+    const getBrowserTimezoneDate = (date) => {
+      const timeZone = Intl.DateTimeFormat().resolvedOptions().timeZone;
+      const localTime = moment.tz(date, timeZone);
+
+      const browserTimezoneDate = localTime.format('YYYY-MM-DD HH:mm:ss');
+
+      return browserTimezoneDate
+    }
+
     return (
       <Table.Row>
+        {selectSyncActive && <Table.Cell>
+          <Checkbox checked={isCheckboxSelected} onChange={onChangeHandler} />
+          </Table.Cell>}
         <Table.RowHeader textAlign="center">
           {isPublished ? (
             <span className="published-status published">
@@ -260,12 +292,14 @@ export default class CoursesListRow extends React.Component {
           )}
           {!teachers && teacher_count && I18n.t('%{teacher_count} teachers', {teacher_count})}
         </Table.Cell>
+        <Table.Cell>{sis_identifier}</Table.Cell>
         <Table.Cell>
           <a href={sub_url}>{subaccount_name}</a>
         </Table.Cell>
         <Table.Cell>
           {template ? '\u2014' : I18n.n(total_students + newlyEnrolledStudents)}
         </Table.Cell>
+        <Table.Cell>{last_sync_to_sis_triggered_at && <FriendlyDatetime showTime dateTime={getBrowserTimezoneDate(last_sync_to_sis_triggered_at)} />}</Table.Cell>
         <Table.Cell textAlign="end">
           {this.renderAddEnrollments()}
           <Tooltip renderTip={statsTip}>

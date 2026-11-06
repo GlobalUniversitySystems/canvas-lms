@@ -23,6 +23,8 @@ class CourseSection < ActiveRecord::Base
   include MaterialChanges
   include SearchTermHelper
 
+  has_paper_trail versions: { class_name: "PaperTrail::CourseVersion" }
+
   belongs_to :course, inverse_of: :course_sections
   belongs_to :nonxlist_course, class_name: "Course"
   belongs_to :root_account, class_name: "Account"

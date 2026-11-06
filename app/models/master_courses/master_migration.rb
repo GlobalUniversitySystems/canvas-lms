@@ -64,6 +64,8 @@ class MasterCourses::MasterMigration < ActiveRecord::Base
 
   # create a new migration and queue it up (if we can)
   def self.start_new_migration!(master_template, user, opts = {})
+    return if ActiveModel::Type::Boolean.new.cast(ENV['DISABLE_BP_SYNC'])
+
     master_template.class.transaction do
       master_template.lock!
       if master_template.active_migration_running?

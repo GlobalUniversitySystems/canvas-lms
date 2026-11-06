@@ -1575,6 +1575,11 @@ class AssignmentsApiController < ApplicationController
 
       @assignment.skip_downstream_changes! if params[:skip_downstream_changes].present?
       result = update_api_assignment(@assignment, params.require(:assignment), @current_user, @context, opts)
+      if @assignment.teacher_access_lock_at.present?
+        if ENV['TEACHER_ACCESS_LOCK_SHIFT'].present?
+          @assignment.update(teacher_access_lock_at: @assignment.teacher_access_lock_at + ENV['TEACHER_ACCESS_LOCK_SHIFT'].to_i.hours)
+        end
+      end
       render_create_or_update_result(result, opts)
     end
   end

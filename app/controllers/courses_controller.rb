@@ -552,7 +552,7 @@ class CoursesController < ApplicationController
       end
 
       state = first_enrollment.state_based_on_date
-      if completed_states.include?(state) ||
+      if completed_states.include?(state) || first_enrollment.sis_end_at_in_past? ||
          (active_states.include?(state) && first_enrollment.section_or_course_date_in_past?) # strictly speaking, these enrollments are perfectly active but enrollment dates are terrible
         @past_enrollments << first_enrollment unless first_enrollment.workflow_state == "invited"
       elsif !first_enrollment.hard_inactive?
@@ -570,11 +570,8 @@ class CoursesController < ApplicationController
     end
 
     @past_enrollments.sort_by! { |e| [e.course.published? ? 0 : 1, Canvas::ICU.collation_key(e.long_name)] }
-    [@current_enrollments, @future_enrollments].each do |list|
-      list.sort_by! do |e|
-        [e.course.published? ? 0 : 1, e.active? ? 1 : 0, Canvas::ICU.collation_key(e.long_name)]
-      end
-    end
+    @future_enrollments.sort_by! { |e| [e.course.published? ? 0 : 1, e.active? ? 1 : 0, Canvas::ICU.collation_key(e.long_name)] }
+    @current_enrollments.sort_by! { |e| e.created_at }.reverse!
   end
   helper_method :load_enrollments_for_index
 
@@ -897,6 +894,10 @@ class CoursesController < ApplicationController
         @course.sis_source_id = sis_course_id
       end
 
+      if params_for_create[:conclude_at].present?
+        @course.sis_end_at = DateTime.parse(params_for_create[:conclude_at])
+      end
+
       if apply_assignment_group_weights
         @course.apply_assignment_group_weights = value_to_boolean apply_assignment_group_weights
       end
@@ -987,6 +988,14 @@ class CoursesController < ApplicationController
   def unconclude
     get_context
     if authorized_action(@context, @current_user, [:change_course_state, :manage_courses_conclude])
+      @context.versions.create(
+        {
+          event: 'unconclude_course',
+          object: @context.to_yaml,
+          object_changes: {unconclude_course: @context.id}.to_yaml,
+          whodunnit: @current_user&.id
+        }
+      ) rescue nil
       @context.unconclude
       Auditors::Course.record_unconcluded(@context, @current_user, source: (api_request? ? :api : :manual))
       flash[:notice] = t("notices.unconcluded", "Course un-concluded")
@@ -1742,6 +1751,14 @@ class CoursesController < ApplicationController
 
     SubmissionLifecycleManager.with_executing_user(@current_user) do
       if @course.save
+        @course.versions.create(
+          {
+            event: 'update_course_settings',
+            object: @course.to_yaml,
+            object_changes: {changes: changes}.to_yaml,
+            whodunnit: @current_user&.id
+          }
+        ) rescue nil
         Auditors::Course.record_updated(@course, @current_user, changes, source: :api)
         render json: course_settings_json(@course)
       else
@@ -2220,7 +2237,7 @@ class CoursesController < ApplicationController
         check_incomplete_registration
 
         unless @context.elementary_subject_course?
-          add_crumb(@context.nickname_for(@current_user, :short_name), url_for(@context), id: "crumb_#{@context.asset_string}")
+          add_crumb(@context.nickname_for(@current_user, :short_name), url_for(@context), id: "crumb_#{@context.asset_string}", title: @context.nickname_for(@current_user, :short_name))
         end
         GuardRail.activate(:primary) do
           set_badge_counts_for(@context, @current_user)
@@ -2283,6 +2300,9 @@ class CoursesController < ApplicationController
               newquizzes_on_quiz_page: @context.root_account.feature_enabled?(:newquizzes_on_quiz_page),
               show_additional_speed_grader_link: Account.site_admin.feature_enabled?(:additional_speedgrader_links),
             }
+          )
+          js_env(
+            RESTRICT_GROUP_MANAGEMENT: !@current_user&.email&.downcase&.in?(ENV['ASSIGNMENTS_WHITELISTED_EMAILS']&.split(',')&.map { |mail| mail.gsub(' ','') }&.map { |mail| mail.downcase })
           )
           js_env(COURSE_HOME: true)
           @upcoming_assignments = get_upcoming_assignments(@context)
@@ -2712,6 +2732,24 @@ class CoursesController < ApplicationController
         @course.save!
       end
       @course.enroll_user(@current_user, "TeacherEnrollment", enrollment_state: "active")
+
+      @context.versions.create(
+        {
+          event: 'copy_course_from',
+          object: @context.to_yaml,
+          object_changes: {from_course: @context.id, to_course: @course.id}.to_yaml,
+          whodunnit: @current_user&.id
+        }
+      ) rescue nil
+
+      @course.versions.create(
+        {
+          event: 'copy_course_to',
+          object: @course.to_yaml,
+          object_changes: {from_course: @context.id, to_course: @course.id}.to_yaml,
+          whodunnit: @current_user&.id
+        }
+      ) rescue nil
 
       @content_migration = @course.content_migrations.build(
         user: @current_user,
@@ -3158,7 +3196,12 @@ class CoursesController < ApplicationController
       update_image(params, "image")
       update_image(params, "banner_image")
 
-      params_for_update[:conclude_at] = params[:course].delete(:end_at) if api_request? && params[:course].key?(:end_at)
+      if api_request? && params[:course].key?(:end_at)
+        params_for_update[:conclude_at] = params[:course].delete(:end_at)
+        unless params_for_update[:conclude_at].blank?
+          @course.sis_end_at = DateTime.parse(params_for_update[:conclude_at])
+        end
+      end
 
       # Remove enrollment dates if "Term" enrollment is specified
       if params_for_update.key?(:restrict_enrollments_to_course_dates)
@@ -3382,6 +3425,14 @@ class CoursesController < ApplicationController
       result = @course.process_event(event)
       if result
         opts = { source: api_request? ? :api : :manual }
+        @course.versions.create(
+          {
+            event: 'process_course_event',
+            object: @course.to_yaml,
+            object_changes: {event: event, opts: opts}.to_yaml,
+            whodunnit: @current_user&.id
+          }
+        ) rescue nil
         case event
         when :offer
           Auditors::Course.record_published(@course, @current_user, opts)
@@ -3496,6 +3547,20 @@ class CoursesController < ApplicationController
     sis_publish_status(true)
   end
 
+  def publish_bulk_to_sis
+    Rails.logger.info("[BULK GRADES PUBLISH] Publishing final grades for courses: #{params[:selected_course]}")
+    courses = Course.where(id: params[:selected_course])
+
+    render json: {error: 'Invalid courses ids list'} and return unless courses
+
+    courses.each do |c|
+      c.publish_final_grades(@current_user)
+      c.update_attribute(:last_sync_to_sis_triggered_at, DateTime.now.iso8601)
+    end
+
+    render json: { courses_ids_processed: courses.pluck(:id) }
+  end
+
   def sis_publish_status(publish_grades = false)
     get_context
     return unless authorized_action(@context, @current_user, :manage_grades)
@@ -3534,6 +3599,24 @@ class CoursesController < ApplicationController
     end
 
     @new_course = @context.reset_content
+    @context.versions.create(
+      {
+        event: 'reset_content',
+        object: @context.to_yaml,
+        object_changes: {old_course: @context.id, new_course: @course.id, api_request: api_request?}.to_yaml,
+        whodunnit: @current_user&.id
+      }
+    ) rescue nil
+
+    @course.versions.create(
+      {
+        event: 'reset_content',
+        object: @course.to_yaml,
+        object_changes: {old_course: @context.id, new_course: @course.id, api_request: api_request?}.to_yaml,
+        whodunnit: @current_user&.id
+      }
+    ) rescue nil
+
     Auditors::Course.record_reset(@context, @new_course, @current_user, source: api_request? ? :api : :manual)
     if api_request?
       render json: course_json(@new_course, @current_user, session, [], nil)
@@ -4177,7 +4260,9 @@ class CoursesController < ApplicationController
       :friendly_name,
       :enable_course_paces,
       :default_due_time,
-      :conditional_release
+      :conditional_release,
+      :sis_identifier,
+      :last_sync_to_sis_triggered_at
     )
   end
 

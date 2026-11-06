@@ -23,6 +23,8 @@ class LatePolicy < ActiveRecord::Base
 
   belongs_to :course, inverse_of: :late_policy
 
+  has_paper_trail versions: { class_name: "PaperTrail::CourseVersion" }
+
   validates :course_id,
             presence: true,
             uniqueness: true

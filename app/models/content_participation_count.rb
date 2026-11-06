@@ -94,7 +94,11 @@ class ContentParticipationCount < ActiveRecord::Base
                                  .joins(assignment: [:post_policy])
                                  .where(submission_conditions)
                                  .where.not(submissions: { score: nil })
-                                 .pluck(:id)
+
+    s_assignments = Assignment.where(id: subs_with_grades.pluck(:assignment_id)).to_a
+    reject_ids = s_assignments.map { |a| (a.feedback_release_date && a.feedback_release_date > Time.now) ? a.id : nil }.compact
+    subs_with_grades = subs_with_grades.where.not(assignment_id: reject_ids).pluck(:id)
+
     subs_with_comments = Submission.active
                                    .joins(:submission_comments, assignment: [:post_policy])
                                    .where(submission_conditions)

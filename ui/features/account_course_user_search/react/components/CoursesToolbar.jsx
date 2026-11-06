@@ -31,6 +31,7 @@ import {useScope as useI18nScope} from '@canvas/i18n'
 import preventDefault from '@canvas/util/preventDefault'
 import {propType as termsPropType} from '../store/TermsStore'
 import NewCourseModal from './NewCourseModal'
+import SyncCourseModal from './CourseSyncAgreeModal'
 
 const I18n = useI18nScope('account_course_user_search')
 
@@ -63,6 +64,8 @@ export default function CoursesToolbar({
   errors,
   draftFilters,
   toggleSRMessage,
+  selectSyncActive,
+  syncGrades,
 }) {
   const groupedTerms = groupBy(terms.data, termGroup)
   const searchLabel =
@@ -171,6 +174,15 @@ export default function CoursesToolbar({
                   </Grid.Col>
                   <Grid.Col width="auto">
                     <Checkbox
+                      checked={draftFilters.hide_concluded}
+                      onChange={e =>
+                        onUpdateFilters({hide_concluded: e.target.checked ? true : null})
+                      }
+                      label={I18n.t('Hide completed courses')}
+                    />
+                  </Grid.Col>
+                  <Grid.Col width="auto">
+                    <Checkbox
                       checked={draftFilters.public}
                       onChange={e => onUpdateFilters({public: e.target.checked ? true : null})}
                       label={I18n.t('Show only public courses')}
@@ -187,6 +199,11 @@ export default function CoursesToolbar({
                     {I18n.t('Course')}
                   </Button>
                 </NewCourseModal>
+              </Grid.Col>
+            )}
+            {selectSyncActive && (
+              <Grid.Col width="auto">
+                <SyncCourseModal syncGrades={syncGrades} />
               </Grid.Col>
             )}
           </Grid.Row>
@@ -209,6 +226,7 @@ CoursesToolbar.propTypes = {
     search_by: oneOf(['course', 'teacher']).isRequired,
     search_term: string.isRequired,
     enrollment_term_id: string.isRequired,
+    hide_concluded: bool,
   }).isRequired,
   errors: shape({search_term: string}).isRequired,
   terms: termsPropType,

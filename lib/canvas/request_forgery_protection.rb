@@ -42,6 +42,7 @@ module Canvas
       session_options = CanvasRails::Application.config.session_options
       options = session_options.slice(:domain, :secure)
       options[:httponly] = HostUrl.is_file_host?(request.host_with_port)
+      options[:same_site] = :lax
       options
     end
 

@@ -86,6 +86,7 @@ export interface EnvCommon {
   auto_show_cc: boolean
   disable_celebrations: boolean
   disable_keyboard_shortcuts: boolean
+  RESTRICT_GROUP_MANAGEMENT: boolean
   LTI_LAUNCH_FRAME_ALLOWANCES: string[]
   DEEP_LINKING_POST_MESSAGE_ORIGIN: string
   comment_library_suggestions_enabled: boolean

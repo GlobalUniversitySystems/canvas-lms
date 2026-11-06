@@ -155,34 +155,54 @@ export default class AssociationsTable extends React.Component {
       const focusNode = this.props.focusManager.allocateNext()
       const label = I18n.t('Remove course association %{name}', {name: course.name})
 
-      return (
-        <Table.Row id={`course_${course.id}`} key={course.id} data-testid="associations-course-row">
-          <Table.Cell>{this.renderCellText(course.name)}</Table.Cell>
-          <Table.Cell>{this.renderCellText(course.course_code)}</Table.Cell>
-          <Table.Cell>{this.renderCellText(course.term.name)}</Table.Cell>
-          <Table.Cell>{this.renderCellText(course.sis_course_id)}</Table.Cell>
-          <Table.Cell>
-            {this.renderCellText(
-              course.teachers
-                ? course.teachers.map(teacher => teacher.display_name).join(', ')
-                : I18n.t('%{teacher_count} teachers', {teacher_count: course.teacher_count})
-            )}
-          </Table.Cell>
-          <Table.Cell>
-            <IconButton
-              withBackground={false}
-              withBorder={false}
-              renderIcon={<IconXSolid />}
-              color="primary"
-              elementRef={focusNode.ref}
-              size="small"
-              screenReaderLabel={label}
-              onClick={this.onRemove.bind(this, course.id, course.name, focusNode.index)}
-              data-course-id={course.id}
-            />
-          </Table.Cell>
-        </Table.Row>
-      )
+      if (window.ENV?.BLUEPRINT_COURSES_DATA?.isBPViewOnly) {
+        return (
+          <Table.Row id={`course_${course.id}`} key={course.id} data-testid="associations-course-row">
+            <Table.Cell>{this.renderCellText(course.name)}</Table.Cell>
+            <Table.Cell>{this.renderCellText(course.course_code)}</Table.Cell>
+            <Table.Cell>{this.renderCellText(course.term.name)}</Table.Cell>
+            <Table.Cell>{this.renderCellText(course.sis_course_id)}</Table.Cell>
+            <Table.Cell>
+              {this.renderCellText(
+                course.teachers
+                  ? course.teachers.map(teacher => teacher.display_name).join(', ')
+                  : I18n.t('%{teacher_count} teachers', {teacher_count: course.teacher_count})
+              )}
+            </Table.Cell>
+            <Table.Cell>
+            </Table.Cell>
+          </Table.Row>
+        )
+      } else {
+        return (
+          <Table.Row id={`course_${course.id}`} key={course.id} data-testid="associations-course-row">
+            <Table.Cell>{this.renderCellText(course.name)}</Table.Cell>
+            <Table.Cell>{this.renderCellText(course.course_code)}</Table.Cell>
+            <Table.Cell>{this.renderCellText(course.term.name)}</Table.Cell>
+            <Table.Cell>{this.renderCellText(course.sis_course_id)}</Table.Cell>
+            <Table.Cell>
+              {this.renderCellText(
+                course.teachers
+                  ? course.teachers.map(teacher => teacher.display_name).join(', ')
+                  : I18n.t('%{teacher_count} teachers', {teacher_count: course.teacher_count})
+              )}
+            </Table.Cell>
+            <Table.Cell>
+              <IconButton
+                withBackground={false}
+                withBorder={false}
+                renderIcon={<IconXSolid />}
+                color="primary"
+                elementRef={focusNode.ref}
+                size="small"
+                screenReaderLabel={label}
+                onClick={this.onRemove.bind(this, course.id, course.name, focusNode.index)}
+                data-course-id={course.id}
+              />
+            </Table.Cell>
+          </Table.Row>
+        )
+      }
     })
   }
 

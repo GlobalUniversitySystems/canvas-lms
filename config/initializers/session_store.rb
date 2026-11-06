@@ -29,6 +29,11 @@ config = {
   key: "_normandy_session",
   secret: (Setting.get("session_secret_key", SecureRandom.hex(64), set_if_nx: true) rescue SecureRandom.hex(64)),
   legacy_key: "_legacy_normandy_session",
+  # NOTE: must stay :none — Canvas acts as an LTI 1.3 Platform, and tools like
+  # Turnitin perform their OIDC login/authorize handshake inside an iframe.
+  # SameSite=Lax's top-level-navigation exemption does not apply to nested
+  # iframe navigations, so the session cookie would be withheld and
+  # /api/lti/authorize would fail with "login_required".
   same_site: :none
 }.merge((ConfigFile.load("session_store").dup || {}).symbolize_keys)
 

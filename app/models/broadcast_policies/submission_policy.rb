@@ -72,6 +72,8 @@ module BroadcastPolicies
     end
 
     def should_dispatch_submission_graded?
+      return false if assignment.feedback_release_date && assignment.feedback_release_date > Time.zone.now
+
       broadcasting_grades? &&
         user_has_visibility? &&
         (submission.changed_state_to(:graded) || (grade_updated? && graded_recently?))

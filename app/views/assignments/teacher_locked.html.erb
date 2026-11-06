@@ -1,0 +1,31 @@
+<style>
+    #right-side-wrapper {
+        height: 100%;
+    }
+
+    .assignment_header {
+        border-bottom: 1px solid #a4a4a4;
+        overflow: hidden;
+    }
+
+    #assignment_head {
+        margin-top: 0;
+        font-weight: bold;
+    }
+
+    .lock_explanation {
+        text-align: left;
+        margin-top: 20px;
+    }
+</style>
+
+<% provide :page_title, @assignment.title %>
+
+<div class="assignment_header">
+  <h1 id="assignment_head"><%= @assignment.title %></h1>
+  <%= render :partial => "assignment_details" %>
+  <div class="lock_explanation">
+    The assignment you’re trying to access has been locked. Kindly contact the Quality team at <a href="mailto:quality@lcca.ac.uk">quality@lcca.ac.uk</a> for more details.
+  </div>
+</div>
+

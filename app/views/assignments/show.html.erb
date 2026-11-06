@@ -40,6 +40,8 @@
 <% provide :page_title, @assignment.title %>
 <% provide :right_side, render(:partial => "assignment_sidebar") %>
 
+<div class="tst" data-tst="<%= @show_locked_page %>, <%= @locked %>"></div>
+
 <% if @show_locked_page %>
 
   <div class="assignment_header">

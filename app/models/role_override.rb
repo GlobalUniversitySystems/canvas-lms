@@ -132,6 +132,12 @@ class RoleOverride < ActiveRecord::Base
         true_for: %w[AccountAdmin],
         available_to: %w[AccountAdmin AccountMembership],
       },
+      bulk_push_to_sis: {
+        label: -> { "Bulk push to SIS" },
+        label_v2: -> { "SIS - bulk push" },
+        available_to: %w[AccountAdmin AccountMembership TeacherEnrollment],
+        true_for: %w[AccountAdmin],
+      },
       manage_account_memberships: {
         label: -> { t("permissions.manage_account_memberships", "Add/remove other admins for the account") },
         label_v2: -> { t("Admins - add / remove") },
@@ -1825,6 +1831,16 @@ class RoleOverride < ActiveRecord::Base
         true_for: %w[AccountAdmin],
         account_only: true,
         account_allows: ->(a) { a.feature_enabled?(:advanced_analytics_ask_questions) }
+      },
+      bp_view_only: {
+        label: -> { t("Blueprint - view only") },
+        label_v2: -> { t("Blueprint - view only") },
+        available_to: %w[
+          TaEnrollment
+          TeacherEnrollment
+          DesignerEnrollment
+        ],
+        true_for: %w[]
       },
       manage_impact: {
         label: -> { t("Manage Impact") },

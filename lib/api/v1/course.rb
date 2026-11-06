@@ -130,6 +130,8 @@ module Api::V1::Course
                            end
       end
       hash["total_students"] = course.student_count || course.student_enrollments.not_fake.distinct.count(:user_id) if includes.include?("total_students")
+      hash['sis_identifier'] = course.sis_identifier || ''
+      hash['last_sync_to_sis_triggered_at'] = course.last_sync_to_sis_triggered_at || ''
       hash["passback_status"] = post_grades_status_json(course) if includes.include?("passback_status")
       hash["is_favorite"] = course.favorite_for_user?(subject_user) if includes.include?("favorites")
       if includes.include?("teachers")

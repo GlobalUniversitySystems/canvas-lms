@@ -216,6 +216,7 @@ const featureBundles: {
   user: () => import('./features/user/index'),
   users_admin_merge: () => import('./features/users_admin_merge/index'),
   users_index: () => import('./features/users_index/index'),
+  video_src: () => import('./features/video_src/index'),
   visibility_help: () => import('./features/visibility_help/index'),
   webzip_export: () => import('./features/webzip_export/index'),
   wiki_page_edit: () => import('./features/wiki_page_edit/index'),

@@ -1,0 +1,12 @@
+<table>
+  <tr>
+    <td>
+      <label for="parameters_user_id">
+        <%= t('account_reports.default.user_asset_access.user_id', 'User ID') %>
+      </label>
+    </td>
+    <td>
+      <%= text_field_tag "parameters[user_id]", @account_report&.parameters&.dig("user_id"), :required => true %>
+    </td>
+  </tr>
+</table>

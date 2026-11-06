@@ -105,7 +105,10 @@ function parseAsPercent(value: string, options): null | GradeInput {
 
 function parseAsPoints(value: string, options): null | GradeInput {
   const points = numberHelper.parse(value)
-  if (Number.isNaN(Number(points))) {
+  if (Number.isNaN(Number(points)) || Number(points) < 0) {
+    return null
+  }
+  if (options.pointsPossible && Number(points) > Number(options.pointsPossible)) {
     return null
   }
 
@@ -158,10 +161,13 @@ function parseForPercent(value, options): GradeResult {
 }
 
 function parseForPoints(value, options) {
-  const result =
+  let result =
     parseAsPoints(value, options) ||
-    parseAsGradingScheme(value, options) ||
-    parseAsPercent(value, options)
+    parseAsGradingScheme(value, options)
+
+  if (options.enterGradesAs != 'points') {
+    result = result || parseAsPercent(value, options)
+  }
 
   if (result) {
     return {

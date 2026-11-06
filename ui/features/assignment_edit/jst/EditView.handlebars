@@ -87,6 +87,22 @@
 
   </div>
 
+    {{#if currentUserCanLockAssignment}}
+    <div class="control-group">
+        <div class="form-column-left no-group">
+            <label for="assignment_teacher_access_lock_at">
+                Lock Assignment for Teachers After
+            </label>
+        </div>
+        <input id="assignment_teacher_access_lock_at"
+               name="teacher_access_lock_at"
+               class=""
+               value="{{teacherAccessLockAt}}"
+               type="datetime-local"
+               data-tooltip
+        />
+    </div>
+    {{/if}}
 
   <div id="assignment_group_selector" class="control-group"></div>
 

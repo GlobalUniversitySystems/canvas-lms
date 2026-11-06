@@ -116,6 +116,9 @@ module GradebooksHelper
 
   def student_score_display_for(submission, show_student_view = false)
     return "-" if submission.blank?
+    assignment = submission.assignment
+    frd = assignment.feedback_release_date
+    return "-" if frd && frd > Time.zone.now
 
     score, grade = if show_student_view
                      [submission.published_score, submission.published_grade]

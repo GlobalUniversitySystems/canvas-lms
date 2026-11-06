@@ -26,7 +26,7 @@ group :test do
   gem "puma", "~> 6.3", require: false
 
   gem "db-query-matchers", "~> 0.12"
-  gem "rspec", "~> 3.12"
+  gem "rspec", "3.13.2"
   gem "rspec_around_all", "0.2.0"
   gem "rspec-rails", "~> 6.0"
   gem "rspec-collection_matchers", "~> 1.2"
@@ -52,7 +52,7 @@ group :test do
   gem "database_cleaner", "~> 2.0"
   gem "json-schema", "~> 4.0"
 
-  gem "rspecq", github: "instructure/rspecq"
+  gem "rspecq", github: "kavalenka/rspecq", ref: "c392e5eb1fafdb8f275ad28aa50db7951911d483"
   gem "flakey_spec_catcher", "~> 0.12", require: false
   gem "factory_bot", "~> 6.3", require: false
   gem "stormbreaker", "~> 1.0", require: false

@@ -23,6 +23,7 @@ import CoursesListRow from './CoursesListRow'
 import CoursesListHeader from './CoursesListHeader'
 import {Table} from '@instructure/ui-table'
 import {ScreenReaderContent} from '@instructure/ui-a11y-content'
+import {Checkbox} from '@instructure/ui-checkbox'
 
 const I18n = useI18nScope('account_course_user_search')
 
@@ -35,6 +36,10 @@ export default function CoursesList(props) {
     <Table margin="small 0" caption={I18n.t('Courses')}>
       <Table.Head>
         <Table.Row>
+          {
+            props.selectSyncActive ? <Table.ColHeader id="header-select" width="1">
+            </Table.ColHeader> : null
+          }
           <Table.ColHeader id="header-published" width="1">
             {I18n.t('Published')}
           </Table.ColHeader>
@@ -76,6 +81,15 @@ export default function CoursesList(props) {
               tipAsc={I18n.t('Click to sort by teacher descending')}
             />
           </Table.ColHeader>
+          <Table.ColHeader id="sis-identifier">
+            <CoursesListHeader
+              {...props}
+              id="sisidentifier"
+              label='Course Identifier'
+              tipDesc={I18n.t('Click to sort')}
+              tipAsc={I18n.t('Click to sort')}
+            />
+          </Table.ColHeader>
           <Table.ColHeader id="header-sub-account">
             <CoursesListHeader
               {...props}
@@ -87,6 +101,9 @@ export default function CoursesList(props) {
           </Table.ColHeader>
           <Table.ColHeader id="header-students" width="1">
             {I18n.t('Students')}
+          </Table.ColHeader>
+          <Table.ColHeader id="header-last_sync_to_sis_triggered_at">
+            Last sync to SIS
           </Table.ColHeader>
           <Table.ColHeader id="header-option-links" width="1">
             <ScreenReaderContent>{I18n.t('Course option links')}</ScreenReaderContent>
@@ -100,6 +117,9 @@ export default function CoursesList(props) {
             courseModel={props.courses}
             roles={props.roles}
             showSISIds={showSISIds}
+            onChangeCheckbox={props.onChangeCheckbox}
+            selectedCourse={props.selectedCourse}
+            selectSyncActive={props.selectSyncActive}
             {...course}
           />
         ))}
