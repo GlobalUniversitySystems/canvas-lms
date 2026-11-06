@@ -218,20 +218,22 @@ export default class IndexMenu extends React.Component {
               </a>
             </li>
           )}
-          <li role="menuitem">
-            <a
-              ref="trigger"
-              href="#"
-              id="assignmentSettingsCog"
-              role="button"
-              title={I18n.t('Assignment Groups Weight')}
-              data-focus-returns-to="course_assignment_settings_link"
-              aria-label={I18n.t('Assignment Groups Weight')}
-            >
-              {this.renderWeightIcon()}
-              {I18n.t('Assignment Groups Weight')}
-            </a>
-          </li>
+          {!window.ENV?.RESTRICT_GROUP_MANAGEMENT && (
+            <li role="menuitem">
+              <a
+                ref="trigger"
+                href="#"
+                id="assignmentSettingsCog"
+                role="button"
+                title={I18n.t('Assignment Groups Weight')}
+                data-focus-returns-to="course_assignment_settings_link"
+                aria-label={I18n.t('Assignment Groups Weight')}
+              >
+                {this.renderWeightIcon()}
+                {I18n.t('Assignment Groups Weight')}
+              </a>
+            </li>
+          )}
           {this.renderDisablePostToSis()}
           {this.renderTools()}
           {this.renderTrayTools()}

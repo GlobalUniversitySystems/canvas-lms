@@ -677,16 +677,29 @@ class EnrollmentsApiController < ApplicationController
     end
 
     params[:enrollment][:limit_privileges_to_course_section] = value_to_boolean(params[:enrollment][:limit_privileges_to_course_section]) if params[:enrollment].key?(:limit_privileges_to_course_section)
-    params[:enrollment].slice!(:enrollment_state, :section, :limit_privileges_to_course_section, :associated_user_id, :role, :start_at, :end_at, :self_enrolled, :no_notify)
+    params[:enrollment].slice!(:enrollment_state, :section, :limit_privileges_to_course_section, :associated_user_id, :role, :start_at, :end_at, :self_enrolled, :no_notify, :ilp)
 
     DueDateCacher.with_executing_user(@current_user) do
       @enrollment = @context.enroll_user(user, type, params[:enrollment].merge(allow_multiple_enrollments: true))
     end
 
     if @enrollment.valid?
+      @enrollment.ilp = params[:enrollment][:ilp]
+      @enrollment.save
       render(json: enrollment_json(@enrollment, @current_user, session))
     else
       render(json: @enrollment.errors, status: :bad_request)
+    end
+  end
+
+  def update_ilp
+    GuardRail.activate(:secondary) do
+      enrollment = @context.all_enrollments.find(params[:id])
+
+      enrollment.ilp = params[:ilp]
+      enrollment.save!
+
+      render json: { success: true }
     end
   end
 

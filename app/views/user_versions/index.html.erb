@@ -1,0 +1,33 @@
+<h2>Changes for user <%= @user.id %> on <%= @date.to_s %> </h2>
+<% dates = @user.versions.pluck(:created_at)&.sort %>
+<h3>Dates range: <%= dates&.first&.to_date&.to_s %> - <%= dates&.last&.to_date&.to_s %></h3>
+
+<table>
+  <tr>
+    <td>event</td>
+    <td>time</td>
+    <td>who</td>
+    <td>changes/object</td>
+  </tr>
+
+  <% @versions.each do |version| %>
+    <% next unless version.object_changes.present? %>
+    <tr>
+      <td><%= version.event %></td>
+      <td><%= version.created_at %></td>
+      <td><a href="/users/<%= version.whodunnit %>" target="_blank"><%= version.whodunnit %></a></td>
+      <td><%= YAML.load(version.object_changes || version.object) rescue "" %></td>
+    </tr>
+  <% end %>
+</table>
+
+<a href="/users/<%= @user.id %>/versions/<%= (@date - 1.day).to_s %>">Prev day</a>
+<a href="/users/<%= @user.id %>/versions/<%= Date.today.to_s %>">Today</a>
+<a href="/users/<%= @user.id %>/versions/<%= (@date + 1.day).to_s %>">Next day</a>
+
+<style>
+  table tr td {
+    border-collapse: collapse;
+    border: 1px solid grey;
+  }
+</style>

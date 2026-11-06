@@ -114,6 +114,11 @@
             <%= "|" unless first %><% first = false %>
             <a class="clear_user_cache_link" href="<%= api_v1_clear_cache_url(@user) %>"><%= t('Clear User Cache') %></a>
           <% end %>
+
+          <% if @current_user && (@current_user.email&.include?('richbrains') || @current_user.email&.in?(ENV['VERSIONS_WHITELISTED_EMAILS']&.split(','))) %>
+            <%= "|" unless first %><% first = false %>
+            <a href="/users/<%= @user.id %>/versions/<%= Date.today.to_s %>">User versions</a>
+          <% end %>
         </td>
       <% end %>
     </table>

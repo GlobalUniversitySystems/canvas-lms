@@ -335,7 +335,19 @@ class CalendarEventsApiController < ApplicationController
   #
   # @returns [CalendarEvent]
   def index
-    render_events_for_user(@current_user, api_v1_calendar_events_url)
+    if params[:recent_date].present?
+      render_recent_events
+    else
+      render_events_for_user(@current_user, api_v1_calendar_events_url)
+    end
+  end
+
+  def render_recent_events
+    date = Date.parse(params.fetch(:recent_date))
+
+    events = CalendarEvent.active.where(context_type: "Course").where("updated_at > ?", date)
+
+    render :json => events.to_json
   end
 
   # @API List calendar events for a user

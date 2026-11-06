@@ -47,11 +47,16 @@ export default createStore({
       'order',
       'search_by',
       'page',
-      'blueprint'
+      'blueprint',
+      'hide_concluded'
     ]
     propsToCleanUp.forEach(p => {
       if (!originalParams[p]) delete params[p]
     })
+    if (originalParams.hide_concluded) {
+      params.state = ['available', 'created', 'claimed']
+    }
+    delete params.hide_concluded
     return params
   }
 })

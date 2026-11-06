@@ -162,11 +162,20 @@ export default function CoursesToolbar({
                       label={I18n.t('Hide courses without students')}
                     />
                   </Grid.Col>
-                  <Grid.Col>
+                  <Grid.Col width="auto">
                     <Checkbox
                       checked={draftFilters.blueprint}
                       onChange={e => onUpdateFilters({blueprint: e.target.checked ? true : null})}
                       label={I18n.t('Show only blueprint courses')}
+                    />
+                  </Grid.Col>
+                  <Grid.Col width="auto">
+                    <Checkbox
+                      checked={draftFilters.hide_concluded}
+                      onChange={e =>
+                        onUpdateFilters({hide_concluded: e.target.checked ? true : null})
+                      }
+                      label={I18n.t('Hide completed courses')}
                     />
                   </Grid.Col>
                 </Grid.Row>
@@ -201,7 +210,8 @@ CoursesToolbar.propTypes = {
     ),
     search_by: oneOf(['course', 'teacher']).isRequired,
     search_term: string.isRequired,
-    enrollment_term_id: string.isRequired
+    enrollment_term_id: string.isRequired,
+    hide_concluded: bool
   }).isRequired,
   errors: shape({search_term: string}).isRequired,
   terms: termsPropType

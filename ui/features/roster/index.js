@@ -44,7 +44,8 @@ const fetchOptions = {
     'email',
     'observed_users',
     'can_be_removed',
-    'custom_links'
+    'custom_links',
+    'ilp'
   ],
   per_page: 50
 }

@@ -2220,6 +2220,7 @@ class Assignment < ActiveRecord::Base
                                     %w[comment group_comment attachments require_submission_type_is_valid resource_link_lookup_uuid]).to_set
 
   def submit_homework(original_student, opts = {})
+    Rails.logger.info('---------------- submit_homework called ----------------')
     raise "Student Required" unless original_student
 
     eula_timestamp = opts[:eula_agreement_timestamp]
@@ -2247,6 +2248,7 @@ class Assignment < ActiveRecord::Base
     primary_homework = nil
 
     homework_attributes = submission_attributes(opts, group)
+    Rails.logger.info("opts[:submitted_at]: #{opts[:submitted_at]}")
     homework_submitted_at = opts[:submitted_at] || Time.zone.now
 
     # move the following 2 lines out of the trnx
@@ -2255,7 +2257,7 @@ class Assignment < ActiveRecord::Base
       [student.global_id, Lti::Asset.opaque_identifier_for(student)]
     end.to_h
     submissions = find_or_create_submissions(students, Submission.preload(:grading_period)).sort_by(&:id)
-
+    Rails.logger.info("opts: #{opts.inspect}")
     transaction do
       submissions.each do |homework|
         homework.require_submission_type_is_valid = opts[:require_submission_type_is_valid].present?
@@ -2272,7 +2274,7 @@ class Assignment < ActiveRecord::Base
         is_primary_student = student_id == original_student.global_id
         homework.grade_matches_current_submission = homework.score ? false : true
         homework.attributes = homework_attributes
-        homework.submitted_at = homework_submitted_at
+        homework.submitted_at ||= homework_submitted_at
         homework.lti_user_id = homework_lti_user_id_hash[student_id]
         homework.turnitin_data[:eula_agreement_timestamp] = eula_timestamp if eula_timestamp.present?
         homework.resource_link_lookup_uuid = opts[:resource_link_lookup_uuid]

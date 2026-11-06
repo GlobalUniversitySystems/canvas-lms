@@ -27,13 +27,14 @@ def gem_override(name, version)
   end
 end
 
-gem "rails", CANVAS_RAILS == "6.1" ? "6.1.4.6" : "7.0.3"
+gem "rails", CANVAS_RAILS == "6.1" ? "6.1.4.6" : "7.0.8.7"
   gem "tzinfo", "2.0.4"
 gem_override "switchman", "3.1.1"
   gem "guardrail", "3.0.2"
 gem_override "switchman-inst-jobs", "4.0.8"
   gem "irb", "1.4.1"
   gem "open4", "1.3.4", require: false
+gem "concurrent-ruby", "1.3.4"
 
 gem "academic_benchmarks", "1.1.2", require: false
 gem "active_model-better_errors", "1.6.7", require: "active_model/better_errors"
@@ -52,6 +53,7 @@ gem "aws-sdk-s3", "1.84.1", require: false
 gem "aws-sdk-sns", "1.36.0", require: false
 gem "aws-sdk-sqs", "1.34.0", require: false
 gem "aws-sdk-kms", "1.39.0", require: false
+gem 'paper_trail'
 gem "aws-sigv4", "1.2.2", require: false
 gem "barby", "0.6.8", require: false
   gem "rqrcode", "1.2.0", require: false
@@ -70,6 +72,7 @@ gem "encrypted_cookie_store-instructure", "1.2.12", require: "encrypted_cookie_s
 gem "folio-pagination", "0.0.12", require: "folio/rails"
 gem "ffi", "1.14.2", require: false
 gem "gepub", "1.0.15"
+gem 'google-protobuf', "3.24.3"
 gem "apollo-federation", "1.1.5"
 gem "graphql", "1.12.14"
 gem "graphql-batch", "0.4.3"
@@ -77,7 +80,7 @@ gem "hashery", "2.1.2", require: false
 gem "highline", "2.0.3", require: false
 gem "httparty", "0.18.1"
 gem "i18n", "1.8.5"
-gem "i18nliner", "0.1.2", github: "instructure/i18nliner", ref: "rails-61"
+gem "i18nliner", "0.1.2", github: "kavalenka/instructure.i18nliner.ref.rails-61"
   gem "ruby2ruby", "2.4.4", require: false
   gem "ruby_parser", "3.18.1", require: false
 gem "icalendar", "2.7.0", require: false

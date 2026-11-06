@@ -35,6 +35,7 @@ config = {
 # of session expiration or expire_after
 config[:expire_after] ||= 1.day
 config[:expires] = nil
+config[:secure] = true
 config[:logger] = Rails.logger
 
 Autoextend.hook(:EncryptedCookieStore, :SessionsTimeout)

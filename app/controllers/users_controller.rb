@@ -856,7 +856,7 @@ class UsersController < ApplicationController
               else
                 @context.manageable_courses(include_concluded).limit(limit)
               end
-      @courses += scope.select("courses.*,#{Course.best_unicode_collation_key("name")} AS sort_key").order("sort_key").preload(:enrollment_term).to_a
+      @courses += scope.select("courses.*,#{Course.best_unicode_collation_key("courses.name")} AS sort_key").order("sort_key").preload(:enrollment_term).to_a
     end
 
     @courses = @courses.sort_by do |c|
@@ -2212,6 +2212,14 @@ class UsersController < ApplicationController
     @target_user ||= @current_user
     if @source_user.grants_right?(@current_user, :merge) && @target_user.grants_right?(@current_user, :merge)
       UserMerge.from(@source_user).into(@target_user, merger: @current_user, source: "users_controller")
+      @target_user.versions.create(
+        {
+          event: 'user_merge',
+          object: @target_user.attributes.to_yaml,
+          object_changes: {merged_user_id: @source_user.id}.to_yaml,
+          whodunnit: @current_user.id
+        }
+      ) rescue nil
       @target_user.touch
       flash[:notice] = t("user_merge_success", "User merge succeeded! %{first_user} and %{second_user} are now one and the same.", first_user: @target_user.name, second_user: @source_user.name)
       if @target_user == @current_user

@@ -77,6 +77,7 @@ class AssignmentsController < ApplicationController
           HAS_ASSIGNMENTS: @context.active_assignments.count > 0,
           QUIZ_LTI_ENABLED: quiz_lti_tool_enabled?,
           DUE_DATE_REQUIRED_FOR_ACCOUNT: due_date_required_for_account,
+          RESTRICT_GROUP_MANAGEMENT: !@current_user&.email&.downcase&.in?(ENV['ASSIGNMENTS_WHITELISTED_EMAILS']&.split(',')&.map { |mail| mail.gsub(' ','') }&.map { |mail| mail.downcase }),
           FLAGS: {
             newquizzes_on_quiz_page: @context.root_account.feature_enabled?(:newquizzes_on_quiz_page),
             new_quizzes_modules_support: Account.site_admin.feature_enabled?(:new_quizzes_modules_support),

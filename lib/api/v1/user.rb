@@ -99,6 +99,11 @@ module Api::V1::User
       json[:last_name] = user.last_name if includes.include?("last_name")
       json[:first_name] = user.first_name if includes.include?("first_name")
 
+      if includes.include?("ilp")
+        cur_enrollment = enrollments&.find { |e| e.user_id == user.id && e.course_id == context.id }
+        json[:ilp] = cur_enrollment&.ilp&.in?([true, 'True', 'true']) ? "yes" : ""
+      end
+
       if enrollments
         json[:enrollments] = enrollments.map do |e|
           enrollment_json(e, current_user, session, includes: includes, excludes: excludes, opts: enrollment_json_opts)

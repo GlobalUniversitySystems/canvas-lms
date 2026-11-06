@@ -194,6 +194,9 @@ module Lti::IMS
     #           "progress": "https://canvas.instructure.com/url/to/progress"
     #         }
     #   }
+
+    # {"timestamp"=>"2025-12-05T18:33:42Z", "scoreGiven"=>33.0, "scoreMaximum"=>100.0, "activityProgress"=>"Submitted", "gradingProgress"=>"FullyGraded", "userId"=>"d9b2e708-d8a9-434a-b9e6-f98385904722", "submission"=>{"submittedAt"=>"2025-12-01T13:56:18Z"}, "course_id"=>"29", "line_item_id"=>"3791"}
+
     def create
       return old_create unless @domain_root_account.feature_enabled? :ags_scores_file_error_improvements
 
@@ -228,6 +231,7 @@ module Lti::IMS
     private
 
     def old_create
+      Rails.logger.info('---------------- old_create called ----------------')
       submit_homework if new_submission? && !has_content_items?
       update_or_create_result
       json = { resultUrl: result_url }
@@ -345,6 +349,7 @@ module Lti::IMS
     end
 
     def score_submission
+      Rails.logger.info('---------------- score_submission called ----------------')
       return unless line_item.assignment_line_item?
 
       if ignore_score?
@@ -361,12 +366,13 @@ module Lti::IMS
         submission = line_item.assignment.grade_student(user, submission_hash).first
       end
       submission.add_comment(comment: scores_params[:comment], skip_author: true) if scores_params[:comment].present?
+      Rails.logger.info('---------------- score_submission ended ----------------')
       submission
     end
 
     def submit_homework
       return unless line_item.assignment_line_item?
-
+      Rails.logger.info('---------------- submit_homework called ----------------')
       submission_opts = { submitted_at: submitted_at }
       if !submission_type.nil? && SCORE_SUBMISSION_TYPES.include?(submission_type)
         submission_opts[:submission_type] = submission_type
@@ -377,13 +383,15 @@ module Lti::IMS
           submission_opts[:body] = submission_data
         end
       end
-
+      Rails.logger.info('---------------- submit_homework end ----------------')
       line_item.assignment.submit_homework(user, submission_opts)
     end
 
     def update_or_create_result
       Submission.transaction do
         # As a transaction, the submission update is rolled back if result update fails.
+        Rails.logger.info('---------------- update_or_create_result called ----------------')
+        Rails.logger.info("Scores Params: #{scores_params.inspect}")
         submission = score_submission
         if result.nil?
           @_result = line_item.results.create!(

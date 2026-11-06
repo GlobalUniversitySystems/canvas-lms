@@ -47,6 +47,12 @@ class ApplicationController < ActionController::Base
   # Around action yields return (in REVERSE order) after all after actions
 
   prepend_before_action :load_user, :load_account
+
+  before_action :set_paper_trail_whodunnit
+  def user_for_paper_trail
+    @current_user.id rescue "Unknown user id"
+  end
+
   # make sure authlogic is before load_user
   skip_before_action :activate_authlogic
   prepend_before_action :activate_authlogic
@@ -1102,7 +1108,7 @@ class ApplicationController < ActionController::Base
 
           if @context.respond_to?(:short_name)
             crumb_url = named_context_url(@context, :context_url) if @context.grants_right?(@current_user, session, :read)
-            add_crumb(@context.nickname_for(@current_user, :short_name), crumb_url)
+            add_crumb(@context.nickname_for(@current_user, :short_name), crumb_url, title: @context.nickname_for(@current_user, :short_name))
           end
 
           @set_badge_counts = true
