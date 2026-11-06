@@ -1503,6 +1503,20 @@ class AccountsController < ApplicationController
     end
   end
 
+  def admins_tab
+    if authorized_action(@account, @current_user, :read_as_admin)
+      @account_users = @account.account_users.active
+      @account_user_permissions_cache = AccountUser.create_permissions_cache(@account_users, @current_user, session)
+      ActiveRecord::Associations.preload(@account_users, user: :communication_channels)
+      order_hash = {}
+      @account.available_account_roles.each_with_index do |role, idx|
+        order_hash[role.id] = idx
+      end
+      @account_users = @account_users.select(&:user).sort_by { |au| [order_hash[au.role_id] || CanvasSort::Last, Canvas::ICU.collation_key(au.user.sortable_name)] }
+      render layout: false
+    end
+  end
+
   def reports_tab
     if authorized_action(@account, @current_user, :read_reports)
       @available_reports = AccountReport.available_reports
@@ -1560,14 +1574,6 @@ class AccountsController < ApplicationController
     if authorized_action(@account, @current_user, :read_as_admin)
       add_crumb t(:settings_crumb, "Settings")
       page_has_instui_topnav
-      @account_users = @account.account_users.active
-      @account_user_permissions_cache = AccountUser.create_permissions_cache(@account_users, @current_user, session)
-      ActiveRecord::Associations.preload(@account_users, user: :communication_channels)
-      order_hash = {}
-      @account.available_account_roles.each_with_index do |role, idx|
-        order_hash[role.id] = idx
-      end
-      @account_users = @account_users.select(&:user).sort_by { |au| [order_hash[au.role_id] || CanvasSort::Last, Canvas::ICU.collation_key(au.user.sortable_name)] }
       @alerts = @account.alerts
 
       @account_roles = @account.available_account_roles.sort_by(&:display_sort_index).map { |role| { id: role.id, label: role.label } }

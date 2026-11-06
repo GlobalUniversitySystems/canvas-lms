@@ -15,8 +15,8 @@
 # You should have received a copy of the GNU Affero General Public License along
 # with this program. If not, see <http://www.gnu.org/licenses/>.
   set_active_tab "settings"
-  js_bundle :account_settings
-  css_bundle :account_settings, :reports, :tinymce
+  js_bundle :account_settings, :user_lists
+  css_bundle :account_settings, :reports, :tinymce, :user_list_boxes
   provide :page_title, t(:page_title, "Account Settings")
 
   js_env(
@@ -1200,40 +1200,9 @@ acknowledge that you have read and agreed to the
     %>"></div>
   <% end %>
 
-  <div tabindex="0" id="tab-users-mount">
-    <h2><%= t(:account_admins_title, "Account Admins") %></h2>
-    <ul class="admins_list user_list list admins">
-      <%= render :partial => 'account_user', :collection => @account_users %>
-      <% available_roles = @context.available_account_roles(false, @current_user).sort_by(&:display_sort_index) %>
-      <% unless available_roles.empty? %>
-        <%= render :partial => 'account_user', :object => nil %>
-      <% end %>
-    </ul>
-    <% unless available_roles.empty? %>
-      <% js_bundle :user_lists %>
-      <button type="button" class="add_users_link Button Button--primary"><i class="icon-plus"></i> <%= t('links.add_admins', %{Account Admins}) %></button>
-      <%= form_tag account_add_account_user_url(@account), {:id => "enroll_users_form", :style => "display: none;"} do  %>
-        <h2><%= t(:add_admin_title, "Add Account Admins") %></h2>
-        <div style="margin-top: 5px;">
-          <div>
-            <%= label_tag :role_id, t("Add More") %>
-            <select name="role_id" id="admin_role_id">
-            <% available_roles.each do |role| %>
-              <option value="<%= role.id %>"><%= AccountUser.readable_type(role.name) %></option>
-            <% end %>
-            </select>
-          </div>
-          <%= render :partial => 'shared/user_lists' %>
-        </div>
-        <div class="form-actions">
-          <button type="button" class="Button go_back_button"><%= t('buttons.modify_users', %{Go back and edit the list of users}) %></button>
-          <button type="button" class="Button cancel_button"><%= t('#buttons.cancel', %{Cancel}) %></button>
-          <button type="button" class="Button Button---primary verify_syntax_button"><%= t('buttons.continue', %{Continue...}) %></button>
-          <button type="submit" class="Button Button--primary add_users_button"><%= t('buttons.add_users', %{OK Looks Good, Add These Users}) %></button>
-
-        </div>
-      <% end %>
-    <% end %>
+  <div tabindex="0" id="tab-users-mount" data-state="loading">
+    <p><%= t("Loading...") %></p>
+    <!-- this will be populated by an xhr request to AccountsController::admins_tab -->
   </div>
 
   <div tabindex="0" id="tab-announcements-mount">

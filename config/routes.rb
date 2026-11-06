@@ -713,6 +713,7 @@ CanvasRails::Application.routes.draw do
     get "search(/:tab)", action: :course_user_search
     get "settings#{full_path_glob}", action: :settings
     get :reports_tab
+    get :admins_tab
     get :settings
     get :admin_tools
     get :rate_limiting, controller: :rate_limiting_settings, action: :index, as: :rate_limiting

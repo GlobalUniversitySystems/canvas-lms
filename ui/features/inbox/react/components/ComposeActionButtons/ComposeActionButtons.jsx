@@ -62,7 +62,7 @@ const renderUploadButtons = props => {
         }}
         multiple={true}
       />
-      {props.onMediaUpload && (
+      {false && (
         <Tooltip renderTip={I18n.t('Record an audio or video comment')} placement="top">
           <IconButton
             id="media-upload-button"

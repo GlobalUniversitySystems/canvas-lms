@@ -63,6 +63,7 @@ class User < ActiveRecord::Base
   before_validation :ensure_lti_id, on: :update
   after_update :clear_cached_short_name, if: ->(user) { user.saved_change_to_short_name? || (user["short_name"].nil? && user.saved_change_to_name?) }
   validate :preserve_lti_id, on: :update
+  before_create :set_default_preferences
 
   serialize :preferences
   include TimeZoneHelper
@@ -1092,6 +1093,10 @@ class User < ActiveRecord::Base
 
   def preserve_lti_id
     errors.add(:lti_id, "Cannot change lti_id!") if lti_id_changed? && !lti_id_was.nil? && !override_lti_id_lock
+  end
+
+  def set_default_preferences
+    preferences[:hide_dashcard_color_overlays] = true
   end
 
   def ensure_lti_id
